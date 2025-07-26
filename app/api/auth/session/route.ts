@@ -1,10 +1,10 @@
-import { createSupabaseClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function GET() {
     try {
-        const supabase = await createSupabaseClient();
+        const supabase = await createClient();
         const { data: { user }, error } = await supabase.auth.getUser();
 
         if (error || !user) {
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         }
 
         // Verify the session with Supabase
-        const supabase = await createSupabaseClient();
+        const supabase = await createClient();
         const { data: { user }, error } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken,
@@ -103,3 +103,4 @@ export async function DELETE() {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+

@@ -1,4 +1,4 @@
-import { createSupabaseClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: 'UserId is required' }, { status: 400 });
             }
 
-            const supabase = await createSupabaseClient();
+            const supabase = await createClient();
             const { data: profile } = await supabase
                 .from('profiles')
                 .select('role')
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         }
 
         // For all other actions, verify admin access
-        const supabase = await createSupabaseClient();
+        const supabase = await createClient();
         const { data: userData } = await supabase.auth.getUser();
         console.log('Current user data:', userData.user?.id, userData.user?.email);
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         console.log('Admin access verified, proceeding with action:', action);
 
         // Use service role for admin operations
-        const supabaseAdmin = await createSupabaseClient(true);
+        const supabaseAdmin = await createClient(true);
 
         switch (action) {
             case 'checkAccess':
@@ -158,3 +158,4 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+

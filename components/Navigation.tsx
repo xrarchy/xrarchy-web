@@ -4,84 +4,70 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Home, Settings, LogOut } from 'lucide-react';
+import { Users, Home, Settings, LogOut, FolderOpen } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
+import { useAuthActions } from '@/hooks/useAuthActions';
 
 interface NavigationProps {
     showFullNav?: boolean;
 }
 
 export default function Navigation({ showFullNav = true }: NavigationProps) {
-    const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+    const { user, isLoading, isInitialized } = useAuthStore();
+    const { signOut } = useAuthActions();
     const [userRole, setUserRole] = useState<string | null>(null);
     const router = useRouter();
 
+    const isAuthenticated = !!user;
+
+    // Debug logging
     useEffect(() => {
-        const getUser = async () => {
-            try {
-                // Use our session API instead of direct Supabase client
-                const sessionResponse = await fetch('/api/auth/session');
-                const sessionData = await sessionResponse.json();
+        console.log('Navigation: Auth state -', {
+            hasUser: !!user,
+            userEmail: user?.email,
+            isLoading,
+            isInitialized,
+            isAuthenticated
+        });
+    }, [user, isLoading, isInitialized, isAuthenticated]);
 
-                if (sessionData.isLoggedIn && sessionData.user) {
-                    setUser({
-                        id: sessionData.user.id,
-                        email: sessionData.user.email
-                    });
-
+    useEffect(() => {
+        const getUserRole = async () => {
+            if (user?.id) {
+                try {
                     // Get user role from the admin API
                     const roleResponse = await fetch('/api/admin', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'getUserRole', userId: sessionData.user.id }),
+                        body: JSON.stringify({ action: 'getUserRole', userId: user.id }),
                     });
 
                     if (roleResponse.ok) {
                         const roleData = await roleResponse.json();
                         setUserRole(roleData.role);
+                    } else {
+                        setUserRole(null);
                     }
-                } else {
-                    setUser(null);
+                } catch (error) {
+                    console.error('Error fetching user role:', error);
                     setUserRole(null);
                 }
-            } catch (error) {
-                console.error('Error fetching user session:', error);
-                setUser(null);
+            } else {
                 setUserRole(null);
             }
         };
 
-        getUser();
-
-        // Since we're using custom session management, we don't need to listen to Supabase auth changes
-        // The session state will be checked when the component mounts or when navigation happens
-    }, []);
+        getUserRole();
+    }, [user?.id]);
 
     const handleSignOut = async () => {
         try {
-            // Clear local state first
-            setUser(null);
-            setUserRole(null);
-
-            // Clear server-side session
-            try {
-                await fetch('/api/auth/session', {
-                    method: 'DELETE',
-                });
-            } catch (error) {
-                console.error('Failed to clear server session:', error);
-            }
-
-            // Redirect to home page
-            router.push('/');
-
-            // Force reload to ensure clean state
-            setTimeout(() => {
-                window.location.reload();
-            }, 100);
+            setUserRole(null); // Clear role immediately for UI feedback
+            await signOut();
         } catch (error) {
             console.error('Sign out error:', error);
-            // Force reload even if there's an error
-            window.location.href = '/';
+            // Force navigation to login even if there's an error
+            router.push('/login');
         }
     };
 
@@ -103,8 +89,16 @@ export default function Navigation({ showFullNav = true }: NavigationProps) {
                             Archy XR
                         </Button>
 
-                        {user && (
+                        {isAuthenticated && isInitialized && (
                             <>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => router.push('/projects')}
+                                >
+                                    <FolderOpen className="h-4 w-4 mr-2" />
+                                    Projects
+                                </Button>
+
                                 <Button
                                     variant="ghost"
                                     onClick={() => router.push('/users')}
@@ -128,10 +122,12 @@ export default function Navigation({ showFullNav = true }: NavigationProps) {
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        {user ? (
+                        {!isInitialized ? (
+                            <div className="h-8 w-20 bg-muted animate-pulse rounded"></div>
+                        ) : isAuthenticated && user ? (
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
-                                    <span className="text-sm text-muted-foreground">
+                                    <span className="text-sm text-muted-foreground max-w-[150px] truncate">
                                         {user.email}
                                     </span>
                                     {userRole && (

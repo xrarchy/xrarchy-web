@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, AlertCircle, UserPlus } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -16,30 +17,21 @@ export default function Register() {
   const [role, setRole] = useState('User');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { user, isInitialized } = useAuthStore();
+
+  const isAuthenticated = !!user;
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkSession = async () => {
-      try {
-        const sessionResponse = await fetch('/api/auth/session');
-        const sessionData = await sessionResponse.json();
-
-        if (sessionData.isLoggedIn && sessionData.user) {
-          // User is already logged in, redirect to admin page
-          router.push('/admin');
-          return;
-        }
-      } catch (error) {
-        console.error('Session check error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkSession();
-  }, [router]);
+    // Don't process anything until auth is initialized
+    if (!isInitialized) return;
+    // Redirect any authenticated user to home
+    if (isAuthenticated) {
+      router.replace('/');
+      return;
+    }
+  }, [isAuthenticated, isInitialized, router]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,12 +73,37 @@ export default function Register() {
     }
   };
 
+  // Show loading while auth is initializing
+  if (!isInitialized) {
+    return (
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if user is already authenticated
+  if (isAuthenticated) {
+    console.log('User is authenticated, not rendering register form');
+    return (
+      <div className="h-[calc(100vh-4rem)] flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="h-[calc(100vh-4rem)] flex items-center justify-center p-6">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Checking authentication...</p>
+          <p>Processing...</p>
         </div>
       </div>
     );

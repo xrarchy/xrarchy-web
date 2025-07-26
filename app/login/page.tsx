@@ -1,249 +1,457 @@
+// 'use client';
+
+// import { useState, useEffect, Suspense } from 'react';
+// import { useRouter, useSearchParams } from 'next/navigation';
+// import { Button } from '@/components/ui/button';
+// import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+// import { Input } from '@/components/ui/input';
+// import { Label } from '@/components/ui/label';
+// import { Alert, AlertDescription } from '@/components/ui/alert';
+// import { CheckCircle2, AlertCircle, LogIn } from 'lucide-react';
+// import { useAuthStore } from '@/stores/authStore';
+// import { useAuthActions } from '@/hooks/useAuthActions';
+// import { useAuthError } from '@/hooks/useAuthError';
+// import { AuthGuard } from '@/components/providers/AuthProvider';
+// import { ErrorBoundary } from '@/components/error-boundary';
+// import { isAuthDataPresent } from '@/utils/auth-cleanup';
+
+// function LoginForm() {
+//   const [email, setEmail] = useState('');
+//   const [password, setPassword] = useState('');
+//   const [success, setSuccess] = useState<string | null>(null);
+//   const [isLoading, setIsLoading] = useState(false);
+//   const router = useRouter();
+//   const searchParams = useSearchParams();
+//   const { user, isInitialized } = useAuthStore();
+//   const { signIn } = useAuthActions();
+//   const { error, setAuthError, clearError } = useAuthError();
+
+//   const isAuthenticated = !!user;
+
+//   useEffect(() => {
+//     // Don't process anything until auth is initialized
+//     if (!isInitialized) {
+//       console.log('🔄 LoginPage: Auth not yet initialized, waiting...');
+//       return;
+//     }
+
+//     console.log('✅ LoginPage: Auth initialized. User:', user ? user.email : 'none', 'Authenticated:', isAuthenticated);
+
+//     // Redirect if already authenticated - do this IMMEDIATELY
+//     if (isAuthenticated) {
+//       console.log('🔄 LoginPage: User is authenticated, redirecting to home...');
+//       router.replace('/'); // Use replace instead of push to avoid back button issues
+//       return;
+//     }
+
+//     // Check for stale auth data and warn if present (debugging only)
+//     if (isAuthDataPresent()) {
+//       console.warn('⚠️ LoginPage: Stale auth data detected on login page - this should be cleaned up on logout');
+//     }
+
+//     // Check if user was redirected here after email confirmation
+//     if (searchParams.get('confirmed') === 'true') {
+//       setSuccess('Email confirmed successfully! You can now login.');
+//       // Remove the parameter from URL
+//       const newUrl = new URL(window.location.href);
+//       newUrl.searchParams.delete('confirmed');
+//       window.history.replaceState({}, '', newUrl.toString());
+//     }
+
+//     // Check for error parameters
+//     const errorParam = searchParams.get('error');
+//     if (errorParam) {
+//       setAuthError(decodeURIComponent(errorParam));
+//       // Remove the parameter from URL
+//       const newUrl = new URL(window.location.href);
+//       newUrl.searchParams.delete('error');
+//       window.history.replaceState({}, '', newUrl.toString());
+//     }
+//   }, [searchParams, isAuthenticated, isInitialized, router, setAuthError, user]);
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault();
+//     clearError();
+//     setSuccess(null);
+//     setIsLoading(true);
+
+//     try {
+//       // Basic client-side validation
+//       if (!email.trim() || !password.trim()) {
+//         setAuthError('Please enter both email and password.');
+//         setIsLoading(false);
+//         return;
+//       }
+
+//       const { data, error } = await signIn(email, password);
+
+//       if (error) {
+//         setAuthError(error);
+//         return;
+//       }
+
+//       if (data?.user) {
+//         setSuccess('Successfully signed in! Redirecting...');
+//         console.log('Login successful for user:', data.user.email);
+
+//         // Immediate redirect without delay - the auth state change will handle the redirect
+//         router.replace('/');
+//       } else {
+//         setAuthError('Sign in failed. No user data received.');
+//       }
+//     } catch (err: unknown) {
+//       console.error('Unexpected login error:', err);
+//       setAuthError(err);
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
+
+//   // Show loading while auth is initializing
+//   if (!isInitialized) {
+//     return (
+//       <div className="min-h-screen flex items-center justify-center bg-gray-50">
+//         <div className="text-center">
+//           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+//           <p className="mt-2 text-gray-600">Loading...</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // Don't render if user is already authenticated
+//   if (isAuthenticated) {
+//     console.log('User is authenticated, not rendering login form');
+//     return (
+//       <div className="min-h-screen flex items-center justify-center bg-gray-50">
+//         <div className="text-center">
+//           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+//           <p className="mt-2 text-gray-600">Redirecting...</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+//       <div className="max-w-md w-full space-y-8">
+//         <div className="text-center">
+//           <LogIn className="mx-auto h-12 w-12 text-blue-600" />
+//           <h2 className="mt-6 text-3xl font-bold text-gray-900">Sign in to your account</h2>
+//           <p className="mt-2 text-sm text-gray-600">
+//             Access your Archy XR project management dashboard
+//           </p>
+//         </div>
+
+//         <Card>
+//           <CardHeader>
+//             <CardTitle>Welcome back</CardTitle>
+//             <CardDescription>
+//               Enter your credentials to access your account
+//             </CardDescription>
+//           </CardHeader>
+//           <CardContent>
+//             {error && (
+//               <Alert variant="destructive" className="mb-6">
+//                 <AlertCircle className="h-4 w-4" />
+//                 <AlertDescription>{error}</AlertDescription>
+//               </Alert>
+//             )}
+
+//             {success && (
+//               <Alert className="mb-6">
+//                 <CheckCircle2 className="h-4 w-4" />
+//                 <AlertDescription>{success}</AlertDescription>
+//               </Alert>
+//             )}
+
+//             <form onSubmit={handleSubmit} className="space-y-6">
+//               <div className="space-y-2">
+//                 <Label htmlFor="email">Email address</Label>
+//                 <Input
+//                   id="email"
+//                   type="email"
+//                   autoComplete="email"
+//                   required
+//                   value={email}
+//                   onChange={(e) => setEmail(e.target.value)}
+//                   placeholder="Enter your email"
+//                   disabled={isLoading}
+//                   className="text-base" // Prevents zoom on iOS
+//                 />
+//               </div>
+
+//               <div className="space-y-2">
+//                 <Label htmlFor="password">Password</Label>
+//                 <Input
+//                   id="password"
+//                   type="password"
+//                   autoComplete="current-password"
+//                   required
+//                   value={password}
+//                   onChange={(e) => setPassword(e.target.value)}
+//                   placeholder="Enter your password"
+//                   disabled={isLoading}
+//                   className="text-base"
+//                 />
+//               </div>
+
+//               <Button
+//                 type="submit"
+//                 className="w-full"
+//                 disabled={isLoading}
+//               >
+//                 {isLoading ? 'Signing in...' : 'Sign in'}
+//               </Button>
+//             </form>
+
+//             <div className="mt-6 text-center">
+//               <p className="text-sm text-gray-600">
+//                 Don&apos;t have an account?{' '}
+//                 <Button
+//                   variant="link"
+//                   className="p-0 h-auto font-semibold text-blue-600 hover:text-blue-500"
+//                   onClick={() => router.push('/register')}
+//                   disabled={isLoading}
+//                 >
+//                   Sign up here
+//                 </Button>
+//               </p>
+//             </div>
+//           </CardContent>
+//         </Card>
+//       </div>
+//     </div>
+//   );
+// }
+
+// export default function LoginPage() {
+//   return (
+//     <ErrorBoundary>
+//       <AuthGuard>
+//         <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+//           <LoginForm />
+//         </Suspense>
+//       </AuthGuard>
+//     </ErrorBoundary>
+//   );
+// }
+
+
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createSupabaseClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, AlertCircle, LogIn } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
+import { useAuthActions } from '@/hooks/useAuthActions';
+import { useAuthError } from '@/hooks/useAuthError';
+import { AuthGuard } from '@/components/providers/AuthProvider';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { isAuthDataPresent } from '@/utils/auth-cleanup';
 
 function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createSupabaseClient();
+  const { signIn } = useAuthActions();
+  const { error, setAuthError, clearError } = useAuthError();
 
   useEffect(() => {
-    // Check if user is already logged in
-    const checkSession = async () => {
-      try {
-        const sessionResponse = await fetch('/api/auth/session');
-        const sessionData = await sessionResponse.json();
+    // Check for stale auth data and warn if present (debugging only)
+    if (isAuthDataPresent()) {
+      console.warn('⚠️ LoginPage: Stale auth data detected on login page - this should be cleaned up on logout');
+    }
 
-        if (sessionData.isLoggedIn && sessionData.user) {
-          // User is already logged in, redirect to admin page
-          router.push('/admin');
-          return;
-        }
-      } catch (error) {
-        console.error('Session check error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkSession();
-  }, [router]);
-
-  useEffect(() => {
     // Check if user was redirected here after email confirmation
     if (searchParams.get('confirmed') === 'true') {
       setSuccess('Email confirmed successfully! You can now login.');
       // Remove the parameter from URL
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('confirmed');
-      window.history.replaceState({}, document.title, newUrl.pathname);
+      window.history.replaceState({}, '', newUrl.toString());
     }
-  }, [searchParams]);
 
-  const handleLogin = async (e: React.FormEvent) => {
+    // Check for error parameters
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      setAuthError(decodeURIComponent(errorParam));
+      // Remove the parameter from URL
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('error');
+      window.history.replaceState({}, '', newUrl.toString());
+    }
+  }, [searchParams, setAuthError]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    clearError();
+    setSuccess(null);
+    setIsLoading(true);
 
-    // Attempt login directly and handle specific error cases
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      // Basic client-side validation
+      if (!email.trim() || !password.trim()) {
+        setAuthError('Please enter both email and password.');
+        setIsLoading(false);
+        return;
+      }
 
-    if (error) {
-      console.log('Login error:', error.message); // Debug log
+      const { data, error } = await signIn(email, password);
 
-      // Check for specific error types
-      if (error.message.includes('Email not confirmed')) {
-        setError('Please check your email and confirm your account before logging in.');
-      } else if (error.message.includes('Invalid login credentials')) {
-        // Check if user exists in profiles table to distinguish between "no account" vs "wrong password"
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', email)
-          .single();
+      if (error) {
+        setAuthError(error);
+        return;
+      }
 
-        if (profileError || !profileData) {
-          // User doesn't exist in profiles table
-          setError('No account found with this email address. Please check your email or register for a new account.');
-        } else {
-          // User exists but password is wrong
-          setError('Invalid password. Please try again.');
-        }
+      if (data?.user) {
+        setSuccess('Successfully signed in! Redirecting...');
+        console.log('Login successful for user:', data.user.email);
+        // The top-level redirect will handle navigation
       } else {
-        setError(error.message);
+        setAuthError('Sign in failed. No user data received.');
       }
-      return;
-    }
-
-    // If we reach here, login was successful, get the session
-    const { data: sessionData } = await supabase.auth.getSession();
-
-    if (sessionData.session) {
-      // Send tokens to server to establish session
-      try {
-        const response = await fetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            accessToken: sessionData.session.access_token,
-            refreshToken: sessionData.session.refresh_token,
-          }),
-        });
-
-        if (response.ok) {
-          console.log('Server session established successfully');
-          router.push('/users');
-        } else {
-          console.error('Failed to establish server session');
-          setError('Login successful but server session failed. Please try again.');
-        }
-      } catch (error) {
-        console.error('Session API error:', error);
-        setError('Login successful but server session failed. Please try again.');
-      }
-    } else {
-      setError('Login successful but no session data available.');
+    } catch (err: unknown) {
+      console.error('Unexpected login error:', err);
+      setAuthError(err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center p-6">
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Checking authentication...</p>
+          <LogIn className="mx-auto h-12 w-12 text-blue-600" />
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">Sign in to your account</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Access your Archy XR project management dashboard
+          </p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome back</CardTitle>
+            <CardDescription>
+              Enter your credentials to access your account
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="mb-6">
+                <CheckCircle2 className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  disabled={isLoading}
+                  className="text-base"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  disabled={isLoading}
+                  className="text-base"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Signing in...' : 'Sign in'}
+              </Button>
+            </form>
+
+            <div className="mt-6 text-center">
+              <p className="text-sm text-gray-600">
+                Don&apos;t have an account?{' '}
+                <Button
+                  variant="link"
+                  className="p-0 h-auto font-semibold text-blue-600 hover:text-blue-500"
+                  onClick={() => router.push('/register')}
+                  disabled={isLoading}
+                >
+                  Sign up here
+                </Button>
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  const { user, isInitialized } = useAuthStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isInitialized && user) {
+      router.replace('/');
+    }
+  }, [isInitialized, user, router]);
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
+  if (user) {
+    return null;
+  }
+
   return (
-    <div className="h-[calc(100vh-4rem)] flex items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl flex items-center justify-center">
-            <LogIn className="h-6 w-6 mr-2" />
-            Login
-          </CardTitle>
-          <CardDescription className="text-center">
-            Enter your credentials to access your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {error}
-                {error.includes('confirm your account') && (
-                  <div className="mt-2 text-sm">
-                    <Button variant="link" className="p-0 h-auto" onClick={async () => {
-                      try {
-                        const response = await fetch('/api/auth/manual-confirm', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email }),
-                        });
-                        if (response.ok) {
-                          setSuccess('Email confirmation resent. Please check your inbox.');
-                          setError(null);
-                        } else {
-                          setError('Failed to resend confirmation email.');
-                        }
-                      } catch {
-                        setError('Failed to resend confirmation email.');
-                      }
-                    }}>
-                      Resend confirmation email
-                    </Button>
-                  </div>
-                )}
-                {error.includes('No account found') && (
-                  <div className="mt-2 text-sm">
-                    <Button variant="link" className="p-0 h-auto" onClick={() => router.push('/register')}>
-                      Click here to register for a new account
-                    </Button>
-                  </div>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert>
-              <CheckCircle2 className="h-4 w-4" />
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                required
-              />
-            </div>
-            <Button type="submit" className="w-full">
-              Login
-            </Button>
-          </form>
-
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Don&apos;t have an account?{' '}
-              <Button variant="link" className="p-0 h-auto" onClick={() => router.push('/register')}>
-                Register here
-              </Button>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-export default function Login() {
-  return (
-    <Suspense fallback={
-      <div className="h-[calc(100vh-4rem)] flex items-center justify-center p-6">
-        <div className="text-center">
-          <div className="animate-spin h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Loading...</p>
-        </div>
-      </div>
-    }>
-      <LoginForm />
-    </Suspense>
+    <ErrorBoundary>
+      <AuthGuard>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+          <LoginForm />
+        </Suspense>
+      </AuthGuard>
+    </ErrorBoundary>
   );
 }

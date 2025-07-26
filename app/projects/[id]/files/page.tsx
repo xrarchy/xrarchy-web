@@ -1,0 +1,437 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+    ArrowLeft,
+    Upload,
+    AlertCircle,
+    Files as FilesIcon,
+    Calendar,
+    Trash2,
+    Download,
+    User
+} from 'lucide-react';
+
+interface ProjectFile {
+    id: string;
+    filename: string;
+    file_size: number;
+    content_type: string;
+    file_path: string;
+    uploaded_at: string;
+    uploaded_by: {
+        id: string;
+        email: string;
+    };
+}
+
+interface Project {
+    id: string;
+    name: string;
+}
+
+export default function ProjectFiles({ params }: { params: Promise<{ id: string }> }) {
+    const [project, setProject] = useState<Project | null>(null);
+    const [files, setFiles] = useState<ProjectFile[]>([]);
+    const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [uploading, setUploading] = useState(false);
+    const [showUpload, setShowUpload] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [description, setDescription] = useState('');
+    const [projectId, setProjectId] = useState<string>('');
+    const supabase = createClient();
+    const router = useRouter();
+
+    // Resolve params
+    useEffect(() => {
+        const resolveParams = async () => {
+            const resolvedParams = await params;
+            setProjectId(resolvedParams.id);
+        };
+        resolveParams();
+    }, [params]);
+
+    const fetchProjectAndFiles = useCallback(async () => {
+        if (!projectId) return; // Wait for projectId to be set
+
+        try {
+            setLoading(true);
+
+            // Check if user is authenticated using the proper Supabase method
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+            if (userError || !user) {
+                setError('Please log in to view files');
+                router.push('/login');
+                return;
+            }
+
+            setCurrentUserId(user.id);
+
+            const { data: userData, error: profileError } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            if (profileError) {
+                setError('Failed to fetch user profile');
+                return;
+            }
+
+            setCurrentUserRole(userData.role as string);
+
+            // Fetch project basic info
+            const projectResponse = await fetch(`/api/projects/${projectId}`);
+            const projectData = await projectResponse.json();
+
+            if (!projectResponse.ok) {
+                setError(projectData.error || 'Failed to fetch project');
+                return;
+            }
+
+            setProject({ id: projectData.project.id, name: projectData.project.name });
+
+            // Fetch project files
+            const filesResponse = await fetch(`/api/projects/${projectId}/files`);
+            const filesData = await filesResponse.json();
+
+            if (!filesResponse.ok) {
+                setError(filesData.error || 'Failed to fetch files');
+                return;
+            }
+
+            setFiles(filesData.projectFiles);
+            setError(null);
+        } catch (error) {
+            console.error('Fetch error:', error);
+            setError('Failed to load project files');
+        } finally {
+            setLoading(false);
+        }
+    }, [supabase, router, projectId]);
+
+    useEffect(() => {
+        fetchProjectAndFiles();
+    }, [fetchProjectAndFiles]);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Check file size (10MB limit)
+            if (file.size > 10 * 1024 * 1024) {
+                setError('File size must be less than 10MB');
+                return;
+            }
+            setSelectedFile(file);
+            setError(null);
+        }
+    };
+
+    const uploadFile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedFile) {
+            setError('Please select a file to upload');
+            return;
+        }
+
+        setUploading(true);
+        setError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            if (description) {
+                formData.append('description', description);
+            }
+
+            const response = await fetch(`/api/projects/${projectId}/files`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.error || 'Failed to upload file');
+                return;
+            }
+
+            setSelectedFile(null);
+            setDescription('');
+            setShowUpload(false);
+            fetchProjectAndFiles(); // Refresh the files list
+        } catch (error) {
+            console.error('Upload error:', error);
+            setError('Failed to upload file');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const deleteFile = async (fileId: string) => {
+        if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${projectId}/files`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ fileId }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.error || 'Failed to delete file');
+                return;
+            }
+
+            fetchProjectAndFiles(); // Refresh the files list
+        } catch (error) {
+            console.error('Delete error:', error);
+            setError('Failed to delete file');
+        }
+    };
+
+    const downloadFile = async (file: ProjectFile) => {
+        try {
+            // Get download URL from Supabase Storage
+            const { data } = await supabase.storage
+                .from('project-files')
+                .createSignedUrl(file.file_path, 3600); // 1 hour expiry
+
+            if (data?.signedUrl) {
+                // Create download link
+                const link = document.createElement('a');
+                link.href = data.signedUrl;
+                link.download = file.filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                setError('Failed to generate download link');
+            }
+        } catch (error) {
+            console.error('Download error:', error);
+            setError('Failed to download file');
+        }
+    };
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    const formatFileSize = (bytes: number) => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    };
+
+    const canDelete = (file: ProjectFile) => {
+        return currentUserRole === 'Admin' || file.uploaded_by.id === currentUserId;
+    };
+
+    if (loading) {
+        return (
+            <div className="container mx-auto p-6 max-w-6xl">
+                <div className="text-center">Loading files...</div>
+            </div>
+        );
+    }
+
+    if (!project) {
+        return (
+            <div className="container mx-auto p-6 max-w-6xl">
+                <div className="text-center">Project not found</div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="container mx-auto p-6 max-w-6xl space-y-6">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-4">
+                    <Button variant="outline" onClick={() => router.push(`/projects/${projectId}`)}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Project
+                    </Button>
+                    <div>
+                        <h1 className="text-3xl font-bold">Files</h1>
+                        <p className="text-muted-foreground">Files for {project.name}</p>
+                    </div>
+                </div>
+                <Button onClick={() => setShowUpload(!showUpload)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload File
+                </Button>
+            </div>
+
+            {error && (
+                <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
+
+            {showUpload && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Upload File</CardTitle>
+                        <CardDescription>Add a new file to this project (max 10MB)</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={uploadFile} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="file">Select File</Label>
+                                <Input
+                                    id="file"
+                                    type="file"
+                                    onChange={handleFileSelect}
+                                    accept="*/*"
+                                    required
+                                />
+                                {selectedFile && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Selected: {selectedFile.name} ({formatFileSize(selectedFile.size)})
+                                    </p>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="description">Description (Optional)</Label>
+                                <Input
+                                    id="description"
+                                    type="text"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="File description"
+                                />
+                            </div>
+                            <div className="flex space-x-2">
+                                <Button type="submit" disabled={uploading || !selectedFile}>
+                                    {uploading ? 'Uploading...' : 'Upload File'}
+                                </Button>
+                                <Button type="button" variant="outline" onClick={() => {
+                                    setShowUpload(false);
+                                    setSelectedFile(null);
+                                    setDescription('');
+                                }}>
+                                    Cancel
+                                </Button>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
+            )}
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Project Files</CardTitle>
+                    <CardDescription>
+                        {files.length} file{files.length !== 1 ? 's' : ''} in this project
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {files.length > 0 ? (
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Filename</TableHead>
+                                        <TableHead>Size</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead>Uploaded By</TableHead>
+                                        <TableHead>Uploaded</TableHead>
+                                        <TableHead>Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {files.map((file) => (
+                                        <TableRow key={file.id}>
+                                            <TableCell className="font-medium">
+                                                {file.filename}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {formatFileSize(file.file_size)}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {file.content_type || 'Unknown'}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                <div className="flex items-center space-x-1">
+                                                    <User className="h-3 w-3" />
+                                                    <span>{file.uploaded_by.email}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                <div className="flex items-center space-x-1">
+                                                    <Calendar className="h-3 w-3" />
+                                                    <span>{formatDate(file.uploaded_at)}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex space-x-1">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => downloadFile(file)}
+                                                    >
+                                                        <Download className="h-3 w-3" />
+                                                    </Button>
+                                                    {canDelete(file) && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => deleteFile(file.id)}
+                                                            className="text-red-600 hover:text-red-700"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                            <FilesIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No files uploaded yet</p>
+                            <Button
+                                className="mt-4"
+                                onClick={() => setShowUpload(true)}
+                            >
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload First File
+                            </Button>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}

@@ -1,10 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
 
-export async function createSupabaseClient(useServiceRole: boolean = false) {
+export async function createClient(useServiceRole: boolean = false) {
   if (useServiceRole) {
     // Use service role key for admin operations
-    return createClient(
+    return createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       {
@@ -16,34 +17,22 @@ export async function createSupabaseClient(useServiceRole: boolean = false) {
     );
   }
 
-  const cookieStore = await cookies();
+  const cookieStore = await cookies()
 
-  // Check for custom authentication cookies
-  const accessToken = cookieStore.get('sb-access-token')?.value;
-  const refreshToken = cookieStore.get('sb-refresh-token')?.value;
-
-  console.log('Available cookies:', cookieStore.getAll().map(c => c.name));
-  console.log('Access token present:', !!accessToken);
-  console.log('Refresh token present:', !!refreshToken);
-
-  const supabase = createClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+          })
+        },
       },
     }
-  );
-
-  // If we have tokens, set the session
-  if (accessToken && refreshToken) {
-    await supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: refreshToken,
-    });
-  }
-
-  return supabase;
+  )
 }

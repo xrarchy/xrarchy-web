@@ -1,4 +1,4 @@
-import { createSupabaseClient } from '@/utils/supabase/server';
+import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
         console.log('Manual confirmation attempt for:', email);
 
         // Use service role to confirm the user directly
-        const supabaseAdmin = await createSupabaseClient(true);
+        const supabaseAdmin = await createClient(true);
 
         // Find the user by email
         const { data: users } = await supabaseAdmin.auth.admin.listUsers();
@@ -50,3 +50,4 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+

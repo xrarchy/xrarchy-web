@@ -204,10 +204,10 @@ export default function AdminPage() {
 
     if (!currentUser) {
         return (
-            <div className="container mx-auto p-6 max-w-4xl">
+            <div className="container mx-auto p-4 md:p-6 max-w-4xl">
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
+                    <AlertDescription className="text-sm">
                         {error || 'Checking admin access...'}
                     </AlertDescription>
                 </Alert>
@@ -216,19 +216,19 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="container mx-auto p-6 max-w-6xl space-y-6">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center space-x-2">
-                    <Users className="h-8 w-8 text-purple-600" />
+        <div className="container mx-auto p-4 md:p-6 max-w-6xl space-y-4 md:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-4 sm:space-y-0">
+                <div className="flex items-center space-x-3">
+                    <Users className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
                     <div>
-                        <h1 className="text-3xl font-bold">Admin Panel</h1>
-                        <p className="text-muted-foreground">Manage users and their roles</p>
+                        <h1 className="text-2xl md:text-3xl font-bold">Admin Panel</h1>
+                        <p className="text-sm md:text-base text-muted-foreground">Manage users and their roles</p>
                     </div>
                 </div>
                 {currentUser && (
-                    <div className="text-right">
-                        <p className="text-sm text-muted-foreground">Logged in as</p>
-                        <p className="font-medium">{currentUser.email}</p>
+                    <div className="text-left sm:text-right">
+                        <p className="text-xs md:text-sm text-muted-foreground">Logged in as</p>
+                        <p className="font-medium text-sm md:text-base truncate max-w-[200px] sm:max-w-none">{currentUser.email}</p>
                     </div>
                 )}
             </div>
@@ -249,63 +249,68 @@ export default function AdminPage() {
 
             {/* Create New User Section */}
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                        <Plus className="h-5 w-5" />
+                <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center space-x-2 text-lg md:text-xl">
+                        <Plus className="h-4 w-4 md:h-5 md:w-5" />
                         <span>Create New User</span>
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-sm">
                         Add a new user to the system with their email, password, and role.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <form onSubmit={createUser} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                value={newUserEmail}
-                                onChange={(e) => setNewUserEmail(e.target.value)}
-                                placeholder="user@example.com"
-                                required
-                                disabled={isCreating}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                value={newUserPassword}
-                                onChange={(e) => setNewUserPassword(e.target.value)}
-                                placeholder="Min 6 characters"
-                                required
-                                disabled={isCreating}
-                                minLength={6}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="role">Role</Label>
-                            <Select value={newUserRole} onValueChange={setNewUserRole} disabled={isCreating}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select role" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="User">User</SelectItem>
-                                    <SelectItem value="Archivist">Archivist</SelectItem>
-                                    <SelectItem value="Admin">Admin</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex items-end">
-                            <Button
-                                type="submit"
-                                className="w-full"
-                                disabled={isCreating}
-                            >
-                                {isCreating ? 'Creating...' : 'Create User'}
-                            </Button>
+                <CardContent className="pt-0">
+                    <form onSubmit={createUser} className="space-y-4">
+                        {/* Mobile: Stack all fields vertically */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                                <Input
+                                    id="email"
+                                    type="email"
+                                    value={newUserEmail}
+                                    onChange={(e) => setNewUserEmail(e.target.value)}
+                                    placeholder="user@example.com"
+                                    required
+                                    disabled={isCreating}
+                                    className="text-base" // Prevents zoom on iOS
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={newUserPassword}
+                                    onChange={(e) => setNewUserPassword(e.target.value)}
+                                    placeholder="Min 6 characters"
+                                    required
+                                    disabled={isCreating}
+                                    minLength={6}
+                                    className="text-base"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="role" className="text-sm font-medium">Role</Label>
+                                <Select value={newUserRole} onValueChange={setNewUserRole} disabled={isCreating}>
+                                    <SelectTrigger className="text-base">
+                                        <SelectValue placeholder="Select role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="User">User</SelectItem>
+                                        <SelectItem value="Archivist">Archivist</SelectItem>
+                                        <SelectItem value="Admin">Admin</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                                <Button
+                                    type="submit"
+                                    className="w-full h-10"
+                                    disabled={isCreating}
+                                >
+                                    {isCreating ? 'Creating...' : 'Create User'}
+                                </Button>
+                            </div>
                         </div>
                     </form>
                 </CardContent>
@@ -313,88 +318,156 @@ export default function AdminPage() {
 
             {/* Users List Section */}
             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
+                <CardHeader className="pb-4">
+                    <CardTitle className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 text-lg md:text-xl">
                         <span>All Users ({users.length})</span>
-                        <Badge variant="secondary">{users.length} total users</Badge>
+                        <Badge variant="secondary" className="text-xs md:text-sm w-fit">
+                            {users.length} total users
+                        </Badge>
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-sm">
                         Manage user roles and permissions. Click on a role to change it.
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
-                            <div className="text-muted-foreground">Loading users...</div>
+                            <div className="text-sm text-muted-foreground">Loading users...</div>
                         </div>
                     ) : (
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Role</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Created</TableHead>
-                                        <TableHead className="w-[100px]">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {users.map((user) => (
-                                        <TableRow key={user.id}>
-                                            <TableCell className="font-medium">{user.email}</TableCell>
-                                            <TableCell>
-                                                <Select
-                                                    value={user.role}
-                                                    onValueChange={(value) => updateUserRole(user.id, value)}
-                                                    disabled={user.id === currentUser.id}
-                                                >
-                                                    <SelectTrigger className="w-[130px]">
-                                                        <SelectValue />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="User">User</SelectItem>
-                                                        <SelectItem value="Archivist">Archivist</SelectItem>
-                                                        <SelectItem value="Admin">Admin</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge
-                                                    variant={user.email_confirmed_at ? "default" : "secondary"}
-                                                    className={user.email_confirmed_at ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
-                                                >
-                                                    {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground">
-                                                {new Date(user.created_at).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Button
-                                                    variant="destructive"
-                                                    size="sm"
-                                                    onClick={() => deleteUser(user.id, user.email)}
-                                                    disabled={user.id === currentUser.id}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                        <>
+                            {/* Mobile Card View */}
+                            <div className="block lg:hidden space-y-3">
+                                {users.map((user) => (
+                                    <Card key={user.id} className="border-l-4 border-l-purple-500">
+                                        <CardContent className="p-4">
+                                            <div className="space-y-4">
+                                                {/* Header */}
+                                                <div className="flex items-start justify-between">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-sm font-medium truncate pr-2">{user.email}</p>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Created: {new Date(user.created_at).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                    <Badge
+                                                        variant={user.email_confirmed_at ? "default" : "secondary"}
+                                                        className={`text-xs ${user.email_confirmed_at ? "bg-green-100 text-green-800" : ""}`}
+                                                    >
+                                                        {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
+                                                    </Badge>
+                                                </div>
+
+                                                {/* Role Selection */}
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs font-medium text-muted-foreground">Role</Label>
+                                                    <Select
+                                                        value={user.role}
+                                                        onValueChange={(value) => updateUserRole(user.id, value)}
+                                                        disabled={user.id === currentUser.id}
+                                                    >
+                                                        <SelectTrigger className="w-full text-sm">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="User">User</SelectItem>
+                                                            <SelectItem value="Archivist">Archivist</SelectItem>
+                                                            <SelectItem value="Admin">Admin</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex justify-end">
+                                                    <Button
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        onClick={() => deleteUser(user.id, user.email)}
+                                                        disabled={user.id === currentUser.id}
+                                                        className="h-8 px-3"
+                                                    >
+                                                        <Trash2 className="h-3 w-3 mr-1" />
+                                                        Delete
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+
+                            {/* Desktop Table View */}
+                            <div className="hidden lg:block">
+                                <div className="max-h-96 overflow-y-auto rounded-md border">
+                                    <Table>
+                                        <TableHeader className="sticky top-0 bg-background z-10">
+                                            <TableRow>
+                                                <TableHead>Email</TableHead>
+                                                <TableHead>Role</TableHead>
+                                                <TableHead>Status</TableHead>
+                                                <TableHead>Created</TableHead>
+                                                <TableHead className="w-[100px]">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {users.map((user) => (
+                                                <TableRow key={user.id}>
+                                                    <TableCell className="font-medium">{user.email}</TableCell>
+                                                    <TableCell>
+                                                        <Select
+                                                            value={user.role}
+                                                            onValueChange={(value) => updateUserRole(user.id, value)}
+                                                            disabled={user.id === currentUser.id}
+                                                        >
+                                                            <SelectTrigger className="w-[130px]">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="User">User</SelectItem>
+                                                                <SelectItem value="Archivist">Archivist</SelectItem>
+                                                                <SelectItem value="Admin">Admin</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Badge
+                                                            variant={user.email_confirmed_at ? "default" : "secondary"}
+                                                            className={user.email_confirmed_at ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+                                                        >
+                                                            {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
+                                                        </Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground">
+                                                        {new Date(user.created_at).toLocaleDateString()}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            onClick={() => deleteUser(user.id, user.email)}
+                                                            disabled={user.id === currentUser.id}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </div>
+                        </>
                     )}
                 </CardContent>
             </Card>
 
             {/* Navigation */}
-            <div className="flex justify-center space-x-4">
-                <Button variant="outline" onClick={() => router.push('/users')}>
+            <div className="flex flex-col sm:flex-row justify-center items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 pt-4">
+                <Button variant="outline" onClick={() => router.push('/users')} className="w-full sm:w-auto">
+                    <Users className="h-4 w-4 mr-2" />
                     Back to Users Page
                 </Button>
-                <Button onClick={() => router.push('/')}>
+                <Button onClick={() => router.push('/')} className="w-full sm:w-auto">
                     Home
                 </Button>
             </div>
