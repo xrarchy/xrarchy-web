@@ -13,14 +13,35 @@ export async function POST(request: Request) {
 
   const supabase = await createSupabaseClient();
 
+  // Check if user already exists in profiles table
+  const supabaseAdmin = await createSupabaseClient(true);
+  const { data: existingProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('email')
+    .eq('email', email)
+    .single();
+
+  if (existingProfile) {
+    return NextResponse.json({ error: 'An account with this email already exists. Please use the login page.' }, { status: 400 });
+  }
+
   // Sign up the user
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${new URL(request.url).origin}/confirm`,
+    },
   });
 
   if (error) {
     console.error('Sign-up error:', error.message);
+
+    // Handle specific error cases
+    if (error.message.includes('already registered')) {
+      return NextResponse.json({ error: 'An account with this email already exists. Please use the login page.' }, { status: 400 });
+    }
+
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
@@ -30,7 +51,6 @@ export async function POST(request: Request) {
   }
 
   // Use service role client to insert profile (bypassing RLS)
-  const supabaseAdmin = await createSupabaseClient(); // Pass true for service role
   const { error: profileError } = await supabaseAdmin
     .from('profiles')
     .insert({
@@ -41,6 +61,12 @@ export async function POST(request: Request) {
 
   if (profileError) {
     console.error('Profile insert error:', profileError.message);
+
+    // Handle duplicate key constraint
+    if (profileError.message.includes('duplicate key') || profileError.message.includes('profiles_email_key')) {
+      return NextResponse.json({ error: 'An account with this email already exists. Please use the login page.' }, { status: 400 });
+    }
+
     return NextResponse.json({ error: profileError.message }, { status: 500 });
   }
 

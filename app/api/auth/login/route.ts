@@ -18,5 +18,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Check if email is confirmed
+  if (data.user && !data.user.email_confirmed_at) {
+    // Sign out the user since email is not confirmed
+    await supabase.auth.signOut();
+    return NextResponse.json({
+      error: 'Please confirm your email address before logging in. Check your email for the confirmation link.'
+    }, { status: 400 });
+  }
+
   return NextResponse.json({ user: data.user, session: data.session }, { status: 200 });
 }

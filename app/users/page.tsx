@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react';
 import { createSupabaseClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Users as UsersIcon, Settings, AlertCircle } from 'lucide-react';
 
 interface UserProfile {
   id: string;
@@ -30,25 +36,33 @@ export default function Users() {
         .from('profiles')
         .select('id, email, role')
         .eq('id', sessionData.session.user.id)
-        .single();
+        .maybeSingle(); // Use maybeSingle() to handle missing profiles
 
       if (userError) {
         setError(userError.message);
         return;
       }
 
-      setCurrentUserRole(userData.role);
+      if (!userData) {
+        setError('Profile not found. Please try registering again.');
+        return;
+      }
+
+      // Type cast the userData to UserProfile to ensure proper typing
+      const userProfile = userData as UserProfile;
+      setCurrentUserRole(userProfile.role);
 
       // If user is Admin, fetch all users; otherwise, show only the current user's profile
-      if (userData.role === 'Admin') {
+      if (userProfile.role === 'Admin') {
         const { data, error } = await supabase.from('profiles').select('id, email, role');
         if (error) {
           setError(error.message);
           return;
         }
-        setUsers(data || []);
+        // Type cast the data array to UserProfile[]
+        setUsers((data as UserProfile[]) || []);
       } else {
-        setUsers([userData]);
+        setUsers([userProfile]);
       }
     };
 
@@ -56,42 +70,89 @@ export default function Users() {
   }, [supabase, router]);
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-4">Users</h1>
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-      {currentUserRole && (
-        <p className="text-gray-600 mb-4">
-          Your role: <span className="font-semibold">{currentUserRole}</span>
-        </p>
-      )}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border border-gray-300 p-2 text-left">ID</th>
-              <th className="border border-gray-300 p-2 text-left">Email</th>
-              <th className="border border-gray-300 p-2 text-left">Role</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.length > 0 ? (
-              users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 p-2">{user.id}</td>
-                  <td className="border border-gray-300 p-2">{user.email}</td>
-                  <td className="border border-gray-300 p-2">{user.role}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={3} className="border border-gray-300 p-2 text-center">
-                  No users found
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+    <div className="container mx-auto p-6 max-w-4xl space-y-6">
+      <div className="flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <UsersIcon className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold">Users</h1>
+        </div>
+        {currentUserRole === 'Admin' && (
+          <Button onClick={() => router.push('/admin')} className="bg-purple-600 hover:bg-purple-700">
+            <Settings className="h-4 w-4 mr-2" />
+            Admin Panel
+          </Button>
+        )}
       </div>
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {currentUserRole && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <span className="text-muted-foreground">Your role:</span>
+              <Badge variant="secondary">{currentUserRole}</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>User Directory</CardTitle>
+          <CardDescription>
+            {currentUserRole === 'Admin'
+              ? 'All users in the system'
+              : 'Your user profile'
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.length > 0 ? (
+                  users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {user.id.substring(0, 8)}...
+                      </TableCell>
+                      <TableCell className="font-medium">{user.email}</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          user.role === 'Admin' ? 'default' :
+                            user.role === 'Archivist' ? 'secondary' :
+                              'outline'
+                        }>
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground">
+                      No users found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
