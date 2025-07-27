@@ -64,14 +64,27 @@ export function useAuthError() {
             return 'Too many attempts. Please wait a moment before trying again.';
         }
 
+        if (lowerMessage.includes('database error') ||
+            lowerMessage.includes('schema') ||
+            lowerMessage.includes('connection refused') ||
+            lowerMessage.includes('database connection')) {
+            return 'Database connection issue. Please try again in a moment or contact support if the problem persists.';
+        }
+
         if (lowerMessage.includes('server error') ||
-            lowerMessage.includes('internal error')) {
+            lowerMessage.includes('internal error') ||
+            lowerMessage.includes('500')) {
             return 'Server error. Please try again later.';
         }
 
         if (lowerMessage.includes('session') ||
             lowerMessage.includes('token')) {
             return 'Session expired. Please sign in again.';
+        }
+
+        if (lowerMessage.includes('timeout') ||
+            lowerMessage.includes('timed out')) {
+            return 'Request timed out. Please check your connection and try again.';
         }
 
         // Return the original message if it's user-friendly, otherwise provide a generic message
@@ -169,7 +182,8 @@ function determineErrorType(error: any): AuthError['type'] {
         return 'auth';
     }
 
-    if (message.includes('server') || message.includes('internal') || error?.status >= 500) {
+    if (message.includes('server') || message.includes('internal') || message.includes('database') ||
+        message.includes('schema') || message.includes('connection refused') || error?.status >= 500) {
         return 'server';
     }
 

@@ -692,8 +692,78 @@ export default function ProjectFiles({ params }: { params: Promise<{ id: string 
 
     if (loading) {
         return (
-            <div className="container mx-auto p-6 max-w-6xl">
-                <div className="text-center">Loading files...</div>
+            <div className="container mx-auto p-4 sm:p-6 max-w-6xl space-y-4 sm:space-y-6">
+                {/* Header Skeleton */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                    <div className="flex items-center space-x-4">
+                        <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+                        <div className="space-y-2">
+                            <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-4 w-40 bg-gray-200 rounded animate-pulse"></div>
+                        </div>
+                    </div>
+                    <div className="h-10 w-32 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+
+                {/* Files Card Skeleton */}
+                <Card>
+                    <CardHeader>
+                        <div className="space-y-2">
+                            <div className="h-6 w-32 bg-gray-200 rounded animate-pulse"></div>
+                            <div className="h-4 w-48 bg-gray-200 rounded animate-pulse"></div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {/* Table Header Skeleton */}
+                            <div className="rounded-md border">
+                                <div className="border-b p-4">
+                                    <div className="grid grid-cols-6 gap-4">
+                                        <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="h-4 w-12 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                                        <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                                    </div>
+                                </div>
+
+                                {/* Table Rows Skeleton */}
+                                {[...Array(5)].map((_, i) => (
+                                    <div key={i} className="border-b last:border-b-0 p-4">
+                                        <div className="grid grid-cols-6 gap-4 items-center">
+                                            <div className="space-y-1">
+                                                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+                                            </div>
+                                            <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+                                            <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                                            <div className="flex items-center space-x-2">
+                                                <div className="h-3 w-3 bg-gray-200 rounded-full animate-pulse"></div>
+                                                <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                <div className="h-3 w-3 bg-gray-200 rounded-full animate-pulse"></div>
+                                                <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+                                            </div>
+                                            <div className="flex space-x-1">
+                                                <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                                                <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Loading indicator */}
+                <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center space-x-2 text-muted-foreground">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                        <span className="text-sm">Loading project files...</span>
+                    </div>
+                </div>
             </div>
         );
     }

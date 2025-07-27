@@ -91,22 +91,6 @@ export default function Navigation({ showFullNav = true }: NavigationProps) {
 
                         {isAuthenticated && isInitialized && (
                             <>
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => router.push('/projects')}
-                                >
-                                    <FolderOpen className="h-4 w-4 mr-2" />
-                                    Projects
-                                </Button>
-
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => router.push('/users')}
-                                >
-                                    <Users className="h-4 w-4 mr-2" />
-                                    Users
-                                </Button>
-
                                 {userRole === 'Admin' && (
                                     <Button
                                         variant="ghost"
@@ -114,9 +98,47 @@ export default function Navigation({ showFullNav = true }: NavigationProps) {
                                         className="text-purple-600 hover:text-purple-700"
                                     >
                                         <Settings className="h-4 w-4 mr-2" />
-                                        Admin Panel
+                                        Admin
                                     </Button>
                                 )}
+
+                                {userRole === 'Archivist' && (
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => router.push('/archivist')}
+                                        className="text-green-600 hover:text-green-700"
+                                    >
+                                        <Settings className="h-4 w-4 mr-2" />
+                                        Dashboard
+                                    </Button>
+                                )}
+
+                                {userRole === 'Admin' && (
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => router.push('/admin/users')}
+                                    >
+                                        <Users className="h-4 w-4 mr-2" />
+                                        Users
+                                    </Button>
+                                )}
+
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => {
+                                        // Route users to their role-specific sections
+                                        if (userRole === 'Admin') {
+                                            router.push('/admin/projects');
+                                        } else if (userRole === 'Archivist') {
+                                            router.push('/archivist/projects');
+                                        } else {
+                                            router.push('/projects');
+                                        }
+                                    }}
+                                >
+                                    <FolderOpen className="h-4 w-4 mr-2" />
+                                    Projects
+                                </Button>
                             </>
                         )}
                     </div>

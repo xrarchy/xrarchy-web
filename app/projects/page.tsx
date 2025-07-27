@@ -90,7 +90,13 @@ export default function Projects() {
             const userProfile = userData as UserProfile;
             setCurrentUserRole(userProfile.role);
 
-            // Fetch projects from API with auth token
+            // Redirect non-admin users to admin section for project management
+            if (userProfile.role === 'Admin') {
+                router.push('/admin/projects');
+                return;
+            }
+
+            // For non-admin users, fetch only their assigned projects
             const response = await fetch('/api/projects', {
                 headers: {
                     'Authorization': `Bearer ${sessionData.session.access_token}`,
