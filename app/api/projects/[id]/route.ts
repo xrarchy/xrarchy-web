@@ -74,7 +74,6 @@ export async function GET(
             .from('project_assignments')
             .select(`
                 id,
-                project_role,
                 assigned_at,
                 assigned_user_id,
                 assigned_by
@@ -99,7 +98,6 @@ export async function GET(
 
                 assignmentsWithUsers.push({
                     id: assignment.id,
-                    project_role: assignment.project_role,
                     assigned_at: assignment.assigned_at,
                     assigned_user: assignedUser || { id: assignment.assigned_user_id, email: 'Unknown' },
                     assigned_by_user: assignedByUser || { email: 'Unknown' }
@@ -109,12 +107,12 @@ export async function GET(
 
         // Get files separately
         const { data: files } = await supabase
-            .from('project_files')
+            .from('files')
             .select(`
                 id,
-                filename,
+                file_name,
                 file_size,
-                uploaded_at,
+                created_at,
                 uploaded_by
             `)
             .eq('project_id', id);
@@ -131,9 +129,9 @@ export async function GET(
 
                 filesWithUsers.push({
                     id: file.id,
-                    name: file.filename,
+                    name: file.file_name,
                     size: file.file_size,
-                    created_at: file.uploaded_at,
+                    created_at: file.created_at,
                     uploaded_by_user: uploadedByUser || { email: 'Unknown' }
                 });
             }
@@ -203,16 +201,8 @@ export async function PUT(
 
             if (project?.created_by === session.user.id) {
                 canEdit = true;
-            } else {
-                const { data: assignment } = await supabase
-                    .from('project_assignments')
-                    .select('project_role')
-                    .eq('project_id', id)
-                    .eq('assigned_user_id', session.user.id)
-                    .single();
-
-                canEdit = assignment?.project_role === 'Project Lead';
             }
+            // Removed project role logic - only Admin and project creator can edit
         }
 
         if (!canEdit) {

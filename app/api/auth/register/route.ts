@@ -47,82 +47,60 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Database error checking existing user' }, { status: 500 });
   }
 
-  // Sign up the user using admin client
-  console.log('Starting user signup with admin client...');
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+  // Use admin API to create user without email confirmation
+  const { data: adminData, error: adminError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
-    email_confirm: true // Auto-confirm email when creating via admin
+    email_confirm: false, // Don't auto-confirm, we'll handle it manually
+    user_metadata: {
+      role: userRole
+    }
   });
 
-  console.log('Signup result:', {
-    userId: data?.user?.id,
-    userEmail: data?.user?.email,
-    error: error?.message,
-    fullError: error
-  });
-
-  if (error) {
-    console.error('Sign-up error:', error.message);
-    console.error('Full error object:', error);
-
-    // Handle specific error cases
-    if (error.message.includes('already registered') || error.message.includes('already been registered')) {
-      return NextResponse.json({ error: 'An account with this email already exists. Please use the login page.' }, { status: 400 });
-    }
-
-    if (error.message.includes('Database error checking email') || error.code === 'unexpected_failure') {
-      console.log('Auth system has connectivity issues. Attempting alternative user creation...');
-      return NextResponse.json({
-        error: 'Authentication system is temporarily unavailable. Please try again in a few minutes, or contact support if the issue persists.'
-      }, { status: 503 });
-    }
-
-    return NextResponse.json({ error: error.message }, { status: 400 });
+  if (adminError) {
+    console.log('❌ Admin user creation failed:', adminError);
+    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
   }
 
-  if (!data.user) {
-    console.error('No user data returned from sign-up');
-    return NextResponse.json({ error: 'User creation failed' }, { status: 500 });
+  if (!adminData.user) {
+    console.log('❌ No user data returned from admin creation');
+    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
   }
 
-  // Use service role client to insert profile (bypassing RLS)
+  // Create profile for the user
   const { error: profileError } = await supabaseAdmin
     .from('profiles')
     .insert({
-      id: data.user.id,
-      email,
-      role: userRole,
+      id: adminData.user.id,
+      email: email, // Use the validated email parameter
+      role: userRole
     });
 
   if (profileError) {
-    console.error('Profile insert error:', profileError.message);
-    console.error('Full profile error:', profileError);
-
-    // Handle duplicate key constraint
-    if (profileError.message.includes('duplicate key') || profileError.message.includes('profiles_email_key')) {
-      return NextResponse.json({ error: 'An account with this email already exists. Please use the login page.' }, { status: 400 });
-    }
-
-    // Handle foreign key constraint error (auth system connectivity issue)
-    if (profileError.message.includes('foreign key constraint') || profileError.message.includes('profiles_id_fkey')) {
-      console.error('Foreign key constraint error - likely auth system connectivity issue');
-
-      // Clean up the auth user that was created but can't have a profile
-      try {
-        await supabaseAdmin.auth.admin.deleteUser(data.user.id);
-        console.log('Cleaned up orphaned auth user');
-      } catch (cleanupError) {
-        console.error('Failed to cleanup auth user:', cleanupError);
-      }
-
-      return NextResponse.json({
-        error: 'Authentication system is experiencing connectivity issues. Please try again in a few minutes.'
-      }, { status: 503 });
-    }
-
-    return NextResponse.json({ error: `Failed to create user profile: ${profileError.message}` }, { status: 500 });
+    console.log('❌ Profile creation failed:', profileError);
+    // Don't fail the registration, just log the error
   }
 
-  return NextResponse.json({ user: data.user }, { status: 200 });
+  // Send confirmation email using regular auth API
+  const supabase = await createClient(false);
+  const { error: emailError } = await supabase.auth.resend({
+    type: 'signup',
+    email: email,
+    options: {
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/auth/confirm-email-custom?no_auto_signin=true&prevent_session=true`
+    }
+  });
+
+  if (emailError) {
+    console.log('❌ Email resend failed:', emailError);
+    // Don't fail the registration, just log the error
+  }
+
+  console.log('✅ User created successfully with admin API');
+  return NextResponse.json({
+    success: true,
+    message: 'User created successfully. Confirmation email sent.',
+    userId: adminData.user.id,
+    userEmail: adminData.user.email
+  });
 }

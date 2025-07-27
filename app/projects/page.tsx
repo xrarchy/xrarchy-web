@@ -55,6 +55,7 @@ export default function Projects() {
     const [loading, setLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [newProject, setNewProject] = useState({ name: '', description: '' });
+    const [isCreatingProject, setIsCreatingProject] = useState(false);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; project: Project | null; isDeleting: boolean }>({
         isOpen: false,
         project: null,
@@ -126,6 +127,8 @@ export default function Projects() {
             return;
         }
 
+        setIsCreatingProject(true);
+
         try {
             // Get current session for auth token
             const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -156,6 +159,8 @@ export default function Projects() {
         } catch (error) {
             console.error('Project creation error:', error);
             setError('Failed to create project');
+        } finally {
+            setIsCreatingProject(false);
         }
     };
 
@@ -212,7 +217,7 @@ export default function Projects() {
         });
     };
 
-    const canCreateProjects = currentUserRole === 'Admin' || currentUserRole === 'Archivist';
+    const canCreateProjects = currentUserRole === 'Admin';
 
     if (loading) {
         return (
@@ -324,8 +329,27 @@ export default function Projects() {
                                 />
                             </div>
                             <div className="flex flex-col sm:flex-row gap-2">
-                                <Button type="submit" className="w-full sm:w-auto">Create Project</Button>
-                                <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)} className="w-full sm:w-auto">
+                                <Button
+                                    type="submit"
+                                    disabled={isCreatingProject}
+                                    className="w-full sm:w-auto"
+                                >
+                                    {isCreatingProject ? (
+                                        <>
+                                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                                            Creating...
+                                        </>
+                                    ) : (
+                                        'Create Project'
+                                    )}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setShowCreateForm(false)}
+                                    disabled={isCreatingProject}
+                                    className="w-full sm:w-auto"
+                                >
                                     Cancel
                                 </Button>
                             </div>

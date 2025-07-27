@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-// Do not use the standard client here to avoid session conflicts
-// import { createSupabaseClient } from '@/utils/supabase/client';
 
 export default function ConfirmEmail() {
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -14,60 +12,116 @@ export default function ConfirmEmail() {
     useEffect(() => {
         const confirmEmail = async () => {
             try {
-                console.log('🔵 Starting email confirmation process...');
+                console.log('🔍 Starting email confirmation process...');
 
-                // Check if an admin is already logged in by calling a safe API route
-                const sessionRes = await fetch('/api/auth/session');
-                const sessionData = await sessionRes.json();
-                const isCurrentlyLoggedIn = sessionData.isLoggedIn;
-                if (isCurrentlyLoggedIn) {
-                    setAdminEmail(sessionData.user.email);
-                    console.log('✅ Admin session detected:', sessionData.user.email);
-                    console.log('🔒 Preserving current session while confirming new user...');
-                } else {
-                    console.log('ℹ️ No active admin session detected.');
+                // Check if we're currently logged in as admin
+                let isCurrentlyLoggedIn = false;
+                let sessionData = null;
+
+                try {
+                    const sessionResponse = await fetch('/api/auth/session');
+                    if (sessionResponse.ok) {
+                        sessionData = await sessionResponse.json();
+                        isCurrentlyLoggedIn = sessionData.user && sessionData.user.email;
+                        if (isCurrentlyLoggedIn) {
+                            setAdminEmail(sessionData.user.email);
+                            console.log('✅ Admin session detected:', sessionData.user.email);
+                        }
+                    }
+                } catch (sessionError) {
+                    console.log('Session check failed:', sessionError);
                 }
 
-                const hashParams = new URLSearchParams(window.location.hash.substring(1));
-                const access_token = hashParams.get('access_token');
-                const refresh_token = hashParams.get('refresh_token');
-                const type = hashParams.get('type');
-                const error = hashParams.get('error');
-                const error_code = hashParams.get('error_code');
-                const error_description = hashParams.get('error_description');
+                // Parse URL parameters
+                const urlParams = new URLSearchParams(window.location.search);
+                const success = urlParams.get('success');
+                const error = urlParams.get('error');
+                const error_code = urlParams.get('error_code');
+                const user_email = urlParams.get('user_email');
+                const noAutoSignin = urlParams.get('no_auto_signin') === 'true';
 
-                console.log('Parsed tokens from URL hash:', {
-                    hasAccessToken: !!access_token,
-                    hasRefreshToken: !!refresh_token,
-                    type,
-                    error,
-                    error_code,
-                    error_description,
-                });
+                console.log('URL parameters:', { success, error, error_code, user_email, noAutoSignin });
 
-                // Check for errors first
+                // Handle success case from direct API
+                if (success === 'true') {
+                    console.log('✅ Email confirmed successfully via direct API');
+                    setStatus('success');
+                    setMessage('Email confirmed successfully! Please log in with your credentials to access your account.');
+                    setTimeout(() => {
+                        router.push('/login?confirmed=true');
+                    }, 3000);
+                    return;
+                }
+
+                // Handle error case from direct API
                 if (error) {
+                    console.log('❌ Error from direct API:', error);
                     setStatus('error');
-                    if (error_code === 'otp_expired') {
-                        setMessage('Your email confirmation link has expired. Please request a new confirmation email.');
-                    } else if (error === 'access_denied') {
-                        setMessage('Email confirmation was denied or cancelled. Please try registering again or request a new confirmation email.');
+
+                    if (error_code === 'expired') {
+                        setMessage('Email confirmation link has expired. Please request a new confirmation email.');
                     } else {
-                        const decodedDescription = error_description ? decodeURIComponent(error_description.replace(/\+/g, ' ')) : '';
-                        setMessage(`Email confirmation failed: ${decodedDescription || error}. Please try registering again.`);
+                        setMessage(`Email confirmation failed: ${error}`);
                     }
                     return;
                 }
 
-                if (!access_token || !refresh_token) {
-                    setStatus('error');
-                    setMessage('No confirmation tokens found in URL. Please check the link from your email or request a new confirmation email.');
+                // Handle hash fragments (tokens from Supabase verification)
+                const hashParams = new URLSearchParams(window.location.hash.substring(1));
+                const hashAccessToken = hashParams.get('access_token');
+                const hashRefreshToken = hashParams.get('refresh_token');
+                const hashType = hashParams.get('type');
+
+                console.log('Hash parameters:', {
+                    hasAccessToken: !!hashAccessToken,
+                    hasRefreshToken: !!hashRefreshToken,
+                    hashType
+                });
+
+                if (hashAccessToken && hashType === 'signup') {
+                    console.log('🔑 Found tokens in hash fragment - processing confirmation...');
+
+                    // Call our confirmation API with the tokens
+                    console.log('📧 Calling confirmation API with hash tokens...');
+                    const response = await fetch('/api/auth/confirm-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            access_token: hashAccessToken,
+                            refresh_token: hashRefreshToken,
+                            type: hashType,
+                            no_auto_signin: true,
+                            prevent_session: true
+                        }),
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        console.log('✅ Email confirmed successfully');
+                        setStatus('success');
+                        setMessage(result.message || 'Email confirmed successfully! Please log in with your credentials.');
+                        setTimeout(() => {
+                            router.push('/login?confirmed=true');
+                        }, 3000);
+                    } else {
+                        console.log('❌ Confirmation failed:', result.error);
+                        setStatus('error');
+                        setMessage(result.error || 'Email confirmation failed. Please try again.');
+                    }
                     return;
                 }
 
-                if (type !== 'signup') {
+                // Handle legacy token-based confirmation (fallback)
+                const access_token = urlParams.get('access_token') || urlParams.get('token');
+                const refresh_token = urlParams.get('refresh_token');
+                const type = urlParams.get('type');
+                const code = urlParams.get('code');
+
+                if (!access_token && !code) {
+                    console.log('❌ No confirmation tokens found in URL or hash');
                     setStatus('error');
-                    setMessage(`Invalid confirmation link type: "${type}". Expected "signup".`);
+                    setMessage('No confirmation tokens found in URL. Please check the link from your email or request a new confirmation email.');
                     return;
                 }
 
@@ -75,38 +129,34 @@ export default function ConfirmEmail() {
                 const response = await fetch('/api/auth/confirm-email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ access_token, refresh_token, type }),
+                    body: JSON.stringify({
+                        access_token: access_token,
+                        refresh_token: refresh_token,
+                        code: code,
+                        type: type,
+                        no_auto_signin: noAutoSignin
+                    }),
                 });
 
                 const result = await response.json();
 
-                console.log('📬 Confirmation API result:', {
-                    success: response.ok,
-                    status: response.status,
-                    result: result
-                });
-
-                if (!response.ok || result.error) {
-                    console.error('Confirmation error:', result.error);
-                    setStatus('error');
-                    setMessage(`Email confirmation failed: ${result.error}. The link may be expired or invalid.`);
-                } else {
-                    console.log('🎉 Confirmation successful!');
+                if (result.success) {
+                    console.log('✅ Email confirmed successfully');
                     setStatus('success');
-
-                    if (isCurrentlyLoggedIn) {
-                        setMessage(`Email for ${result.userEmail} has been successfully confirmed. You remain logged in as ${sessionData.user.email}.`);
-                    } else {
-                        setMessage('Email confirmed successfully! You can now log in. Redirecting...');
-                        setTimeout(() => {
-                            router.push('/login?confirmed=true');
-                        }, 3000);
-                    }
+                    setMessage(result.message || 'Email confirmed successfully! Please log in with your credentials.');
+                    setTimeout(() => {
+                        router.push('/login?confirmed=true');
+                    }, 3000);
+                } else {
+                    console.log('❌ Confirmation failed:', result.error);
+                    setStatus('error');
+                    setMessage(result.error || 'Email confirmation failed. Please try again.');
                 }
-            } catch (err: unknown) {
-                console.error('Critical confirmation error:', err);
+
+            } catch (error) {
+                console.error('❌ Confirmation error:', error);
                 setStatus('error');
-                setMessage(`An unexpected error occurred: ${err instanceof Error ? err.message : 'Unknown error'}.`);
+                setMessage('An error occurred during email confirmation. Please try again.');
             }
         };
 
@@ -114,89 +164,75 @@ export default function ConfirmEmail() {
     }, [router]);
 
     return (
-        <div className="container mx-auto p-4 max-w-md">
-            <div className="text-center">
-                <h1 className="text-2xl font-bold mb-4">Email Confirmation</h1>
-
-                {status === 'loading' && (
-                    <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
-                        <p>Confirming your email...</p>
-                    </div>
+        <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+                <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                    Email Confirmation
+                </h2>
+                {adminEmail && (
+                    <p className="mt-2 text-center text-sm text-gray-600">
+                        Logged in as: {adminEmail}
+                    </p>
                 )}
+            </div>
 
-                {status === 'success' && (
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                        <p>{message}</p>
-                        {adminEmail ? (
-                            <div className="mt-4">
-                                <a
-                                    href="/admin"
-                                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                                >
-                                    Back to Admin Panel
-                                </a>
-                            </div>
-                        ) : (
-                            <div className="mt-4">
-                                <a
-                                    href="/login"
-                                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                                >
-                                    Go to Login
-                                </a>
-                            </div>
-                        )}
-                        {message.includes('Redirecting') && (
-                            <p className="text-sm mt-2">Redirecting to login page...</p>
-                        )}
-                    </div>
-                )}
-
-                {status === 'error' && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                        <p>{message}</p>
-                        <div className="mt-4">
-                            {adminEmail ? (
-                                // Admin is logged in - show admin-focused actions
-                                <div className="space-x-2">
-                                    <a
-                                        href="/admin"
-                                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                                    >
-                                        Back to Admin Panel
-                                    </a>
-                                    <a
-                                        href="/register"
-                                        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-                                    >
-                                        Create New User
-                                    </a>
-                                </div>
-                            ) : (
-                                // No admin logged in - show user-focused actions
-                                <div className="space-x-2">
-                                    <a
-                                        href="/register"
-                                        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                                    >
-                                        Register Again
-                                    </a>
-                                    <a
-                                        href="/login"
-                                        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-                                    >
-                                        Try Login
-                                    </a>
-                                </div>
-                            )}
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+                <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+                    {status === 'loading' && (
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                            <p className="mt-2 text-sm text-gray-600">Confirming your email...</p>
                         </div>
-                        {message.includes('expired') && (
-                            <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800 text-sm">
-                                <p><strong>Tip:</strong> Email confirmation links expire for security reasons. You can request a new one by registering again or contacting support.</p>
+                    )}
+
+                    {status === 'success' && (
+                        <div className="rounded-md bg-green-50 p-4">
+                            <div className="flex">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <p className="text-sm font-medium text-green-800">{message}</p>
+                                </div>
                             </div>
-                        )}
+                        </div>
+                    )}
+
+                    {status === 'error' && (
+                        <div className="rounded-md bg-red-50 p-4">
+                            <div className="flex">
+                                <div className="flex-shrink-0">
+                                    <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div className="ml-3">
+                                    <p className="text-sm font-medium text-red-800">{message}</p>
+                                    <div className="mt-2 text-sm text-red-700">
+                                        <p>Tip: Email confirmation links expire for security reasons. You can request a new one by registering again or contacting support.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mt-6 flex space-x-3">
+                        <button
+                            onClick={() => router.push('/register')}
+                            className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                            Register Again
+                        </button>
+                        <button
+                            onClick={() => router.push('/login')}
+                            className="flex-1 bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                        >
+                            Try Login
+                        </button>
                     </div>
-                )}
+                </div>
             </div>
         </div>
     );

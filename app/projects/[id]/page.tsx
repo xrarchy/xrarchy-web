@@ -31,7 +31,6 @@ import {
 
 interface ProjectAssignment {
     id: string;
-    project_role: string;
     assigned_at: string;
     assigned_user: {
         id: string;
@@ -81,7 +80,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
     const [showAddUser, setShowAddUser] = useState(false);
     const [showEditProject, setShowEditProject] = useState(false);
     const [selectedUser, setSelectedUser] = useState('');
-    const [selectedRole, setSelectedRole] = useState('Member');
+    // Removed selectedRole state - no longer using project roles
     const [editProject, setEditProject] = useState({ name: '', description: '' });
     const [projectId, setProjectId] = useState<string>('');
     const [deleteUserDialog, setDeleteUserDialog] = useState<{
@@ -226,8 +225,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    userId: selectedUser,
-                    role: selectedRole
+                    userId: selectedUser
                 }),
             });
 
@@ -239,7 +237,6 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
             }
 
             setSelectedUser('');
-            setSelectedRole('Member');
             setShowAddUser(false);
             fetchProject(); // Refresh the project
         } catch (error) {
@@ -545,19 +542,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                             </SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="role">Project Role</Label>
-                                        <Select value={selectedRole} onValueChange={setSelectedRole}>
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Project Lead">Project Lead</SelectItem>
-                                                <SelectItem value="Member">Member</SelectItem>
-                                                <SelectItem value="Viewer">Viewer</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                    {/* Project Role selection removed - using simplified role system */}
                                 </div>
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <Button type="submit" className="w-full sm:w-auto">Add to Project</Button>
@@ -577,7 +562,7 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Email</TableHead>
-                                            <TableHead>Project Role</TableHead>
+                                            <TableHead>Role</TableHead>
                                             <TableHead>Assigned</TableHead>
                                             <TableHead>Actions</TableHead>
                                         </TableRow>
@@ -590,11 +575,11 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge variant={
-                                                        assignment.project_role === 'Project Lead' ? 'default' :
-                                                            assignment.project_role === 'Member' ? 'secondary' :
+                                                        allUsers.find(u => u.id === assignment.assigned_user.id)?.role === 'Admin' ? 'default' :
+                                                            allUsers.find(u => u.id === assignment.assigned_user.id)?.role === 'Archivist' ? 'secondary' :
                                                                 'outline'
                                                     }>
-                                                        {assignment.project_role}
+                                                        {allUsers.find(u => u.id === assignment.assigned_user.id)?.role || 'User'}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-sm">
@@ -628,24 +613,24 @@ export default function ProjectDetail({ params }: { params: Promise<{ id: string
                                                     <div className="font-medium break-words">{assignment.assigned_user.email}</div>
                                                 </div>
 
-                                                {/* Role and Date */}
-                                                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                                                    <div>
-                                                        <span className="text-sm text-muted-foreground">Role:</span>
-                                                        <div>
-                                                            <Badge variant={
-                                                                assignment.project_role === 'Project Lead' ? 'default' :
-                                                                    assignment.project_role === 'Member' ? 'secondary' :
-                                                                        'outline'
-                                                            }>
-                                                                {assignment.project_role}
-                                                            </Badge>
-                                                        </div>
+                                                {/* Role */}
+                                                <div>
+                                                    <span className="text-sm text-muted-foreground">Role:</span>
+                                                    <div className="mt-1">
+                                                        <Badge variant={
+                                                            allUsers.find(u => u.id === assignment.assigned_user.id)?.role === 'Admin' ? 'default' :
+                                                                allUsers.find(u => u.id === assignment.assigned_user.id)?.role === 'Archivist' ? 'secondary' :
+                                                                    'outline'
+                                                        }>
+                                                            {allUsers.find(u => u.id === assignment.assigned_user.id)?.role || 'User'}
+                                                        </Badge>
                                                     </div>
-                                                    <div>
-                                                        <span className="text-sm text-muted-foreground">Assigned:</span>
-                                                        <div className="text-sm">{formatDate(assignment.assigned_at)}</div>
-                                                    </div>
+                                                </div>
+
+                                                {/* Assigned Date */}
+                                                <div>
+                                                    <span className="text-sm text-muted-foreground">Assigned:</span>
+                                                    <div className="text-sm">{formatDate(assignment.assigned_at)}</div>
                                                 </div>
 
                                                 {/* Actions */}

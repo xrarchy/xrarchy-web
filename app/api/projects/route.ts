@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
             const { data: assignedProjects } = await supabase
                 .from('project_assignments')
                 .select('project_id')
-                .eq('assigned_to', userId);
+                .eq('assigned_user_id', userId);
 
             const projectIds = assignedProjects?.map(ap => ap.project_id) || [];
 
@@ -206,6 +206,21 @@ export async function POST(request: NextRequest) {
         if (projectError) {
             console.error('Project creation error:', projectError);
             return NextResponse.json({ error: 'Failed to create project' }, { status: 500 });
+        }
+
+        // Automatically assign the creator to the project
+        const { error: assignmentError } = await supabase
+            .from('project_assignments')
+            .insert({
+                project_id: project.id,
+                assigned_user_id: userId,
+                assigned_by: userId,
+                assigned_at: new Date().toISOString()
+            });
+
+        if (assignmentError) {
+            console.error('Auto-assignment error:', assignmentError);
+            // Don't fail the project creation if assignment fails
         }
 
         return NextResponse.json({
