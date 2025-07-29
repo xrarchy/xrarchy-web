@@ -284,7 +284,7 @@ export default function ArchivistDashboard() {
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    onClick={() => router.push(`/projects/${project.id}/files`)}
+                                                    onClick={() => router.push(`/archivist/projects/${project.id}/files`)}
                                                     className="flex-1"
                                                 >
                                                     <Files className="h-3 w-3 mr-1" />

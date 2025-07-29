@@ -219,7 +219,12 @@ export default function Home() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => router.push(`/projects/${project.id}/files`)}
+                          onClick={() => {
+                            const route = currentUserRole === 'Admin'
+                              ? `/admin/projects/${project.id}/files`
+                              : `/archivist/projects/${project.id}/files`;
+                            router.push(route);
+                          }}
                           className="flex-1"
                         >
                           <Files className="h-3 w-3 mr-1" />

@@ -9,7 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
     ArrowLeft,
     Upload,
@@ -19,8 +18,18 @@ import {
     Trash2,
     Download,
     User,
-    Shield
+    AlertTriangle,
+    Archive
 } from 'lucide-react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 interface ProjectFile {
     id: string;
@@ -39,10 +48,10 @@ interface Project {
     name: string;
 }
 
-export default function AdminProjectFiles({ params }: { params: Promise<{ id: string }> }) {
+export default function ArchivistProjectFiles({ params }: { params: Promise<{ projectId: string }> }) {
     const [project, setProject] = useState<Project | null>(null);
     const [files, setFiles] = useState<ProjectFile[]>([]);
-
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -50,6 +59,17 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [description, setDescription] = useState('');
     const [projectId, setProjectId] = useState<string>('');
+    const [deleteDialog, setDeleteDialog] = useState<{
+        isOpen: boolean;
+        fileId: string;
+        fileName: string;
+        isDeleting: boolean;
+    }>({
+        isOpen: false,
+        fileId: '',
+        fileName: '',
+        isDeleting: false
+    });
 
     const supabase = createClient();
     const router = useRouter();
@@ -58,7 +78,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
     useEffect(() => {
         const resolveParams = async () => {
             const resolvedParams = await params;
-            setProjectId(resolvedParams.id);
+            setProjectId(resolvedParams.projectId);
         };
         resolveParams();
     }, [params]);
@@ -77,15 +97,17 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                 return;
             }
 
-            // Verify admin access
-            const adminResponse = await fetch('/api/admin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'checkAccess' }),
-            });
+            setCurrentUserId(user.id);
 
-            if (!adminResponse.ok) {
-                setError('Admin access required');
+            // Verify archivist access
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single();
+
+            if (!profile || (profile.role !== 'Archivist' && profile.role !== 'Admin')) {
+                setError('Archivist access required');
                 router.push('/');
                 return;
             }
@@ -177,10 +199,27 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
         }
     };
 
-    const deleteFile = async (fileId: string) => {
-        if (!confirm('Are you sure you want to delete this file? This action cannot be undone.')) {
-            return;
-        }
+    const openDeleteDialog = (fileId: string, fileName: string) => {
+        setDeleteDialog({
+            isOpen: true,
+            fileId,
+            fileName,
+            isDeleting: false
+        });
+    };
+
+    const closeDeleteDialog = () => {
+        setDeleteDialog({
+            isOpen: false,
+            fileId: '',
+            fileName: '',
+            isDeleting: false
+        });
+    };
+
+    const confirmDeleteFile = async () => {
+        setDeleteDialog(prev => ({ ...prev, isDeleting: true }));
+        setError(null);
 
         try {
             const response = await fetch(`/api/projects/${projectId}/files`, {
@@ -188,20 +227,23 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ fileId }),
+                body: JSON.stringify({ fileId: deleteDialog.fileId }),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
                 setError(data.error || 'Failed to delete file');
+                setDeleteDialog(prev => ({ ...prev, isDeleting: false }));
                 return;
             }
 
+            closeDeleteDialog();
             fetchProjectAndFiles();
         } catch (error) {
             console.error('Delete error:', error);
             setError('Failed to delete file');
+            setDeleteDialog(prev => ({ ...prev, isDeleting: false }));
         }
     };
 
@@ -245,12 +287,17 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
+    const canDelete = (file: ProjectFile) => {
+        // Archivists can delete files they uploaded
+        return file.uploaded_by.id === currentUserId;
+    };
+
     if (loading) {
         return (
             <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
                 <div className="text-center space-y-4">
-                    <Shield className="h-12 w-12 text-purple-600 mx-auto animate-pulse" />
-                    <p className="text-gray-600">Loading admin project files...</p>
+                    <Archive className="h-12 w-12 text-blue-600 mx-auto animate-pulse" />
+                    <p className="text-gray-600">Loading project files...</p>
                 </div>
             </div>
         );
@@ -258,7 +305,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
 
     if (!project) {
         return (
-            <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
+            <div className="container mx-auto p-6 max-w-6xl">
                 <div className="text-center">Project not found</div>
             </div>
         );
@@ -266,34 +313,28 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
 
     return (
         <div className="container mx-auto p-4 sm:p-6 max-w-6xl space-y-4 sm:space-y-6">
-            {/* Back Button Row */}
-            <div className="flex items-center justify-between">
-                <Button variant="outline" onClick={() => router.push(`/admin/projects/${projectId}`)}>
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Project
-                </Button>
-                <div className="flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-purple-600" />
-                    <Badge variant="secondary" className="text-xs">Admin View</Badge>
-                </div>
-            </div>
-
-            {/* Files Header */}
-            <div className="space-y-4">
-                <div className="space-y-2">
-                    <h1 className="text-2xl sm:text-3xl font-bold">Files</h1>
-                    <p className="text-muted-foreground text-sm sm:text-base break-words">
-                        Files for {project.name}
-                    </p>
-                </div>
-
-                {/* Upload Button */}
-                <div className="flex">
-                    <Button onClick={() => setShowUpload(!showUpload)} className="w-full sm:w-auto">
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload File
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+                <div className="flex items-center space-x-4">
+                    <Button variant="outline" onClick={() => router.push(`/archivist/projects/${projectId}`)}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Back to Project
                     </Button>
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                            <h1 className="text-2xl sm:text-3xl font-bold">Files</h1>
+                            <Badge variant="secondary" className="text-xs">
+                                <Archive className="h-3 w-3 mr-1" />
+                                Archivist
+                            </Badge>
+                        </div>
+                        <p className="text-muted-foreground text-sm sm:text-base">Files for {project.name}</p>
+                    </div>
                 </div>
+                <Button onClick={() => setShowUpload(!showUpload)} className="w-full sm:w-auto">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload File
+                </Button>
             </div>
 
             {error && (
@@ -336,15 +377,20 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     placeholder="File description"
                                 />
                             </div>
-                            <div className="flex space-x-2">
-                                <Button type="submit" disabled={uploading || !selectedFile}>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                <Button type="submit" disabled={uploading || !selectedFile} className="w-full sm:w-auto">
                                     {uploading ? 'Uploading...' : 'Upload File'}
                                 </Button>
-                                <Button type="button" variant="outline" onClick={() => {
-                                    setShowUpload(false);
-                                    setSelectedFile(null);
-                                    setDescription('');
-                                }}>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShowUpload(false);
+                                        setSelectedFile(null);
+                                        setDescription('');
+                                    }}
+                                    className="w-full sm:w-auto"
+                                >
                                     Cancel
                                 </Button>
                             </div>
@@ -362,117 +408,64 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                 </CardHeader>
                 <CardContent>
                     {files.length > 0 ? (
-                        <>
-                            {/* Desktop Table View */}
-                            <div className="hidden md:block rounded-md border">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Filename</TableHead>
-                                            <TableHead>Size</TableHead>
-                                            <TableHead>Uploaded By</TableHead>
-                                            <TableHead>Uploaded</TableHead>
-                                            <TableHead>Actions</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {files.map((file) => (
-                                            <TableRow key={file.id}>
-                                                <TableCell className="font-medium">
-                                                    {file.filename}
-                                                </TableCell>
-                                                <TableCell className="text-sm">
-                                                    {formatFileSize(file.file_size)}
-                                                </TableCell>
-                                                <TableCell className="text-sm">
-                                                    <div className="flex items-center space-x-1">
-                                                        <User className="h-3 w-3" />
-                                                        <span>{file.uploaded_by.email}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-sm">
-                                                    <div className="flex items-center space-x-1">
-                                                        <Calendar className="h-3 w-3" />
-                                                        <span>{formatDate(file.created_at)}</span>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="flex space-x-1">
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => downloadFile(file)}
-                                                        >
-                                                            <Download className="h-3 w-3" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => deleteFile(file.id)}
-                                                            className="text-red-600 hover:text-red-700"
-                                                        >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </div>
-
-                            {/* Mobile Card View */}
-                            <div className="md:hidden space-y-4">
-                                {files.map((file) => (
-                                    <Card key={file.id} className="border">
-                                        <CardContent className="p-4">
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <span className="text-sm text-muted-foreground">Filename:</span>
-                                                    <div className="font-medium break-words">{file.filename}</div>
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Filename</TableHead>
+                                        <TableHead>Size</TableHead>
+                                        <TableHead>Uploaded By</TableHead>
+                                        <TableHead>Uploaded</TableHead>
+                                        <TableHead>Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {files.map((file) => (
+                                        <TableRow key={file.id}>
+                                            <TableCell className="font-medium">
+                                                {file.filename}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {formatFileSize(file.file_size)}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                <div className="flex items-center space-x-1">
+                                                    <User className="h-3 w-3" />
+                                                    <span>{file.uploaded_by.email}</span>
                                                 </div>
-
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <span className="text-sm text-muted-foreground">Size:</span>
-                                                        <div className="text-sm">{formatFileSize(file.file_size)}</div>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-sm text-muted-foreground">Uploaded:</span>
-                                                        <div className="text-sm">{formatDate(file.created_at)}</div>
-                                                    </div>
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                <div className="flex items-center space-x-1">
+                                                    <Calendar className="h-3 w-3" />
+                                                    <span>{formatDate(file.created_at)}</span>
                                                 </div>
-
-                                                <div>
-                                                    <span className="text-sm text-muted-foreground">Uploaded by:</span>
-                                                    <div className="text-sm break-words">{file.uploaded_by.email}</div>
-                                                </div>
-
-                                                <div className="flex space-x-2 pt-2">
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex space-x-1">
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => downloadFile(file)}
-                                                        className="flex-1"
                                                     >
-                                                        <Download className="h-3 w-3 mr-1" />
-                                                        Download
+                                                        <Download className="h-3 w-3" />
                                                     </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => deleteFile(file.id)}
-                                                        className="text-red-600 hover:text-red-700"
-                                                    >
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </Button>
+                                                    {canDelete(file) && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => openDeleteDialog(file.id, file.filename)}
+                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
                                                 </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
                     ) : (
                         <div className="text-center py-8 text-muted-foreground">
                             <FilesIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -488,6 +481,70 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                     )}
                 </CardContent>
             </Card>
+
+            {/* Delete Confirmation Modal */}
+            <Dialog open={deleteDialog.isOpen} onOpenChange={(open) => !deleteDialog.isDeleting && !open && closeDeleteDialog()}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                                <AlertTriangle className="h-5 w-5 text-red-600" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-lg font-semibold text-gray-900">
+                                    Delete File
+                                </DialogTitle>
+                                <DialogDescription className="text-sm text-gray-500 mt-1">
+                                    This action cannot be undone.
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div className="flex items-center gap-2 text-sm">
+                                <FilesIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                <span className="font-medium text-gray-900 truncate">
+                                    {deleteDialog.fileName}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-3">
+                            Are you sure you want to delete this file? This action will permanently remove the file from the project and cannot be undone.
+                        </p>
+                    </div>
+
+                    <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={closeDeleteDialog}
+                            disabled={deleteDialog.isDeleting}
+                            className="w-full sm:w-auto"
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={confirmDeleteFile}
+                            disabled={deleteDialog.isDeleting}
+                            className="w-full sm:w-auto bg-red-600 hover:bg-red-700 focus:ring-red-500"
+                        >
+                            {deleteDialog.isDeleting ? (
+                                <>
+                                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2"></div>
+                                    Deleting...
+                                </>
+                            ) : (
+                                <>
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete File
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

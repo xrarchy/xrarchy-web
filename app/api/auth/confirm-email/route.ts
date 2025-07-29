@@ -130,7 +130,7 @@ export async function POST(request: Request) {
 
         console.log('🔧 Confirming email using admin API...');
 
-        const { data: confirmData, error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
+        const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
             verifyData.user.id,
             { email_confirm: true }
         );
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
         if (access_token && refresh_token) {
             console.log('🔐 Setting session for confirmed user...');
 
-            const { data: sessionData, error: sessionError } = await tempClient.auth.setSession({
+            const { error: sessionError } = await tempClient.auth.setSession({
                 access_token,
                 refresh_token
             });

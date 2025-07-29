@@ -255,7 +255,7 @@ export default function ArchivistProjects() {
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
-                                                            onClick={() => router.push(`/projects/${project.id}/files`)}
+                                                            onClick={() => router.push(`/archivist/projects/${project.id}/files`)}
                                                         >
                                                             <Files className="h-3 w-3" />
                                                         </Button>
@@ -330,7 +330,7 @@ export default function ArchivistProjects() {
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
-                                                        onClick={() => router.push(`/projects/${project.id}/files`)}
+                                                        onClick={() => router.push(`/archivist/projects/${project.id}/files`)}
                                                         className="flex-1 min-w-0"
                                                     >
                                                         <Files className="h-3 w-3 mr-1" />

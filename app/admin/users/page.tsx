@@ -281,7 +281,7 @@ export default function Users() {
             Go to Admin Panel
           </Button>
         )}
-        <Button variant="outline" onClick={() => router.push('/projects')} className="w-full sm:w-auto">
+        <Button variant="outline" onClick={() => router.push('/admin/projects')} className="w-full sm:w-auto">
           View Projects
         </Button>
         <Button variant="outline" onClick={() => router.push('/')} className="w-full sm:w-auto">

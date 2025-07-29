@@ -29,7 +29,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Failed to list auth users' }, { status: 500 });
         }
 
-        const authUser = authUsers.users.find(user => user.email === email);
+        const authUser = authUsers.users.find((user: { email?: string }) => user.email === email);
         if (!authUser) {
             console.log('No auth user found with email:', email);
             return NextResponse.json({ error: 'No auth user found with this email' }, { status: 404 });

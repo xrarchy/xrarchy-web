@@ -63,8 +63,8 @@ export async function GET(request: Request) {
         });
 
         console.log('🔍 Verifying confirmation...');
-        let verifyData: any = null;
-        let verifyError: any = null;
+        let verifyData: { user?: { id: string; email?: string } } | null = null;
+        let verifyError: (Error & { code?: string }) | null = null;
 
         if (code) {
             // Use code-based confirmation (Supabase standard)
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
                 });
                 verifyData = data;
                 verifyError = error;
-            } catch (otpError) {
+            } catch {
                 console.log('OTP verification failed, trying alternative method...');
 
                 // Method 2: Try to exchange the code for a session
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
         const supabaseAdmin = await createServerClient(true);
 
         console.log('🔧 Confirming email using admin API...');
-        const { data: confirmData, error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
+        const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(
             verifyData.user.id,
             { email_confirm: true }
         );

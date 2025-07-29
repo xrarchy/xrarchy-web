@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, CheckCircle2, Users, Files, Shield, Loader2 } from 'lucide-react';
+import { AlertCircle, Users, Files, Shield, Loader2 } from 'lucide-react';
 
 interface User {
     id: string;
@@ -20,7 +20,7 @@ export default function AdminPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [isInitializing, setIsInitializing] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
+
     const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null);
 
     const router = useRouter();
@@ -145,11 +145,7 @@ export default function AdminPage() {
                         >
                             Go Home
                         </Button>
-                        <Button
-                            onClick={() => router.push('/login')}
-                        >
-                            Login
-                        </Button>
+
                     </div>
                 </div>
             </div>
@@ -186,12 +182,7 @@ export default function AdminPage() {
                 </Alert>
             )}
 
-            {success && (
-                <Alert>
-                    <CheckCircle2 className="h-4 w-4" />
-                    <AlertDescription>{success}</AlertDescription>
-                </Alert>
-            )}
+
 
             {/* System Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
