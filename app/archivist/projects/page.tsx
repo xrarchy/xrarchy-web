@@ -144,19 +144,38 @@ export default function ArchivistProjects() {
     return (
         <div className="container mx-auto p-4 sm:p-6 max-w-6xl space-y-4 sm:space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div className="flex items-center space-x-4">
+            <div className="space-y-4 sm:space-y-0">
+                {/* Mobile: Stack vertically */}
+                <div className="flex flex-col space-y-4 sm:hidden">
                     <Button
                         variant="outline"
                         onClick={() => router.push('/archivist')}
-                        className="flex items-center space-x-2"
+                        className="flex items-center space-x-2 w-fit"
                     >
                         <ArrowLeft className="h-4 w-4" />
                         <span>Back to Dashboard</span>
                     </Button>
                     <div className="flex items-center space-x-2">
-                        <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
-                        <h1 className="text-2xl sm:text-3xl font-bold">Project Management</h1>
+                        <FolderOpen className="h-6 w-6 text-green-600" />
+                        <h1 className="text-2xl font-bold">Project Management</h1>
+                    </div>
+                </div>
+
+                {/* Desktop: Flex horizontally */}
+                <div className="hidden sm:flex sm:justify-between sm:items-center">
+                    <div className="flex items-center space-x-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push('/archivist')}
+                            className="flex items-center space-x-2"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            <span>Back to Dashboard</span>
+                        </Button>
+                        <div className="flex items-center space-x-2">
+                            <FolderOpen className="h-6 w-6 lg:h-8 lg:w-8 text-green-600" />
+                            <h1 className="text-2xl lg:text-3xl font-bold">Project Management</h1>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -290,10 +309,10 @@ export default function ArchivistProjects() {
                                                 </div>
 
                                                 {/* Meta Information */}
-                                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div className="space-y-2 text-sm">
                                                     <div>
                                                         <span className="text-muted-foreground">Created by:</span>
-                                                        <div className="font-medium">{project.created_by_profile?.email || 'Unknown'}</div>
+                                                        <div className="font-medium truncate">{project.created_by_profile?.email || 'Unknown'}</div>
                                                     </div>
                                                     <div>
                                                         <span className="text-muted-foreground">Created:</span>
@@ -360,15 +379,8 @@ export default function ArchivistProjects() {
                     <CardDescription>What you can do as an Archivist</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <Button
-                            variant="outline"
-                            onClick={() => router.push('/admin/users')}
-                            className="h-16 flex flex-col items-center justify-center space-y-1"
-                        >
-                            <UserPlus className="h-5 w-5" />
-                            <span className="text-sm">Assign Users</span>
-                        </Button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2">
+
                         <Button
                             variant="outline"
                             onClick={() => router.push('/archivist')}

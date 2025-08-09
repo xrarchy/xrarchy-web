@@ -8,7 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Users as UsersIcon, Settings, AlertCircle } from 'lucide-react';
+import { Users as UsersIcon, Settings, AlertCircle, Trash2, AlertTriangle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface UserProfile {
   id: string;
@@ -19,7 +27,19 @@ interface UserProfile {
 export default function Users() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteDialog, setDeleteDialog] = useState<{
+    isOpen: boolean;
+    userId: string;
+    userEmail: string;
+    isDeleting: boolean;
+  }>({
+    isOpen: false,
+    userId: '',
+    userEmail: '',
+    isDeleting: false
+  });
   const supabase = createClient();
   const router = useRouter();
 
@@ -58,6 +78,7 @@ export default function Users() {
       // Type cast the userData to UserProfile to ensure proper typing
       const userProfile = userData as UserProfile;
       setCurrentUserRole(userProfile.role);
+      setCurrentUserId(userProfile.id);
 
       // If user is Admin, fetch all users; otherwise, show only the current user's profile
       if (userProfile.role === 'Admin') {
@@ -75,6 +96,64 @@ export default function Users() {
 
     fetchUsers();
   }, [supabase, router]);
+
+  const openDeleteDialog = (userId: string, userEmail: string) => {
+    setDeleteDialog({
+      isOpen: true,
+      userId,
+      userEmail,
+      isDeleting: false
+    });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({
+      isOpen: false,
+      userId: '',
+      userEmail: '',
+      isDeleting: false
+    });
+  };
+
+  const confirmDeleteUser = async () => {
+    setDeleteDialog(prev => ({ ...prev, isDeleting: true }));
+    setError(null);
+
+    try {
+      // Call the admin API to delete the user
+      const response = await fetch('/api/admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'deleteUser',
+          userId: deleteDialog.userId
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to delete user');
+        setDeleteDialog(prev => ({ ...prev, isDeleting: false }));
+        return;
+      }
+
+      // Remove the user from the local state
+      setUsers(prev => prev.filter(user => user.id !== deleteDialog.userId));
+      closeDeleteDialog();
+    } catch (error) {
+      console.error('Delete user error:', error);
+      setError('Failed to delete user');
+      setDeleteDialog(prev => ({ ...prev, isDeleting: false }));
+    }
+  };
+
+  const canDeleteUser = (userId: string) => {
+    // Can't delete yourself
+    return userId !== currentUserId;
+  };
 
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-6xl space-y-4 md:space-y-6">
@@ -109,6 +188,8 @@ export default function Users() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+
 
       {currentUserRole && (
         <Card>
@@ -212,6 +293,19 @@ export default function Users() {
                           </div>
                         </div>
                       </div>
+                      {canDeleteUser(user.id) && (
+                        <div className="pt-2 border-t border-border">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openDeleteDialog(user.id, user.email)}
+                            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                          >
+                            <Trash2 className="h-3 w-3 mr-2" />
+                            Delete User
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -233,6 +327,7 @@ export default function Users() {
                     <TableHead>Email Address</TableHead>
                     <TableHead className="w-[130px]">Role</TableHead>
                     <TableHead className="w-[120px]">Access Level</TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -257,11 +352,27 @@ export default function Users() {
                             user.role === 'Archivist' ? 'Project Manager' :
                               'Basic User'}
                         </TableCell>
+                        <TableCell>
+                          {canDeleteUser(user.id) ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openDeleteDialog(user.id, user.email)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                              title="Delete user"
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              <span className="hidden sm:inline">Delete</span>
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">You</span>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                         No users found
                       </TableCell>
                     </TableRow>
@@ -288,6 +399,78 @@ export default function Users() {
           Home
         </Button>
       </div>
+
+      {/* Delete User Confirmation Modal */}
+      <Dialog open={deleteDialog.isOpen} onOpenChange={(open) => !deleteDialog.isDeleting && !open && closeDeleteDialog()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-semibold text-gray-900">
+                  Delete User
+                </DialogTitle>
+                <DialogDescription className="text-sm text-gray-500 mt-1">
+                  This action cannot be undone.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="py-4">
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <div className="flex items-center gap-2 text-sm">
+                <UsersIcon className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                <span className="font-medium text-gray-900 truncate">
+                  {deleteDialog.userEmail}
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 space-y-2">
+              <p className="text-sm text-gray-600">
+                Are you sure you want to delete this user? This will:
+              </p>
+              <ul className="text-sm text-gray-600 list-disc list-inside space-y-1 ml-2">
+                <li>Permanently remove the user from the system</li>
+                <li>Remove all project assignments</li>
+                <li>Delete their profile and authentication data</li>
+                <li>This action cannot be undone</li>
+              </ul>
+            </div>
+          </div>
+
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={closeDeleteDialog}
+              disabled={deleteDialog.isDeleting}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteUser}
+              disabled={deleteDialog.isDeleting}
+              className="w-full sm:w-auto bg-red-600 hover:bg-red-700 focus:ring-red-500"
+            >
+              {deleteDialog.isDeleting ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2"></div>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

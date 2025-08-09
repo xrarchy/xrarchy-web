@@ -168,9 +168,9 @@ export default function Register() {
                 <SelectContent>
                   <SelectItem value="User">User</SelectItem>
                   <SelectItem value="Archivist">Archivist</SelectItem>
-                  <SelectItem value="Admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
+
             </div>
             <Button
               type="submit"
