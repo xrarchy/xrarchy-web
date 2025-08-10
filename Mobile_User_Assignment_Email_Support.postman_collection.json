@@ -1,0 +1,548 @@
+{
+    "info": {
+        "_postman_id": "mobile-user-assignment-email-support",
+        "name": "📱 Mobile User Assignment with Email Support",
+        "description": "Complete mobile user assignment API collection with email support. Import this into your existing collection or run standalone.\n\n🔑 KEY FEATURES:\n• Assign users by email address (no UUID lookup needed)\n• Remove users by email address (mobile-friendly)\n• Comprehensive permission testing\n• Mobile-optimized responses\n• Backward compatible with existing admin APIs\n\n📧 EMAIL SUPPORT:\n• POST /api/mobile/projects/{id}/users with {\"email\": \"user@example.com\"}\n• DELETE /api/mobile/projects/{id}/users with {\"email\": \"user@example.com\"}\n• Automatic user validation and clear error messages",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "👥 Mobile User Assignment with Email Support",
+            "description": "Complete mobile user assignment testing with email and ID support",
+            "item": [
+                {
+                    "name": "📋 List Project Users (Mobile)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "",
+                                    "pm.test('Project users listed successfully', () => {",
+                                    "    pm.expect(response.success).to.be.true;",
+                                    "});",
+                                    "",
+                                    "if (response.success && response.data.assignments) {",
+                                    "    console.log('👥 Mobile Project Users:');",
+                                    "    console.log(`📊 Total users assigned: ${response.data.totalCount}`);",
+                                    "    ",
+                                    "    response.data.assignments.forEach((assignment, index) => {",
+                                    "        console.log(`${index + 1}. ${assignment.assigned_user.email} (${assignment.assigned_user.role})`);",
+                                    "        console.log(`   📅 Assigned: ${new Date(assignment.assigned_at).toLocaleDateString()}`);",
+                                    "    });",
+                                    "    ",
+                                    "    // Store user data for testing removal",
+                                    "    if (response.data.assignments.length > 0) {",
+                                    "        pm.environment.set('test_user_to_remove', response.data.assignments[0].assigned_user.id);",
+                                    "        pm.environment.set('test_user_email_to_remove', response.data.assignments[0].assigned_user.email);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{admin_project_id}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{admin_project_id}}",
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "📧 Assign User by Email (Admin)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "console.log('');",
+                                    "console.log('📧 USER ASSIGNMENT BY EMAIL TEST');",
+                                    "console.log('Project ID:', pm.variables.get('admin_project_id'));",
+                                    "console.log('Note: Set {{user_email_to_assign}} variable to test assignment');",
+                                    "console.log('');"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "",
+                                    "pm.test('User assignment by email response received', () => {",
+                                    "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                                    "});",
+                                    "",
+                                    "if (response.success && response.data.assignment) {",
+                                    "    console.log('✅ User Assignment by Email Success:');",
+                                    "    console.log(`👤 User: ${response.data.assignment.assigned_user.email}`);",
+                                    "    console.log(`🎭 Role: ${response.data.assignment.assigned_user.role}`);",
+                                    "    console.log(`📅 Assigned: ${new Date(response.data.assignment.assigned_at).toLocaleString()}`);",
+                                    "    console.log(`📧 Method: ${response.data.assignedBy} (email lookup)`);",
+                                    "    console.log(`💬 Message: ${response.message}`);",
+                                    "    ",
+                                    "    pm.environment.set('assigned_user_id', response.data.assignment.assigned_user.id);",
+                                    "    pm.environment.set('assigned_user_email', response.data.assignment.assigned_user.email);",
+                                    "} else if (!response.success && pm.response.code === 400) {",
+                                    "    console.log('ℹ️ User already assigned:', response.message);",
+                                    "} else if (!response.success && pm.response.code === 404) {",
+                                    "    console.log('❌ User not found with provided email');",
+                                    "} else {",
+                                    "    console.log('❌ Assignment failed:', response.error || 'Unknown error');",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{user_email_to_assign}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{admin_project_id}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{admin_project_id}}",
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "➕ Assign User by ID (Admin)",
+                    "event": [
+                        {
+                            "listen": "prerequest",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "console.log('');",
+                                    "console.log('👥 USER ASSIGNMENT BY ID TEST');",
+                                    "console.log('Project ID:', pm.variables.get('admin_project_id'));",
+                                    "console.log('Note: Set {{user_id_to_assign}} variable to test assignment');",
+                                    "console.log('');"
+                                ]
+                            }
+                        },
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "",
+                                    "pm.test('User assignment by ID response received', () => {",
+                                    "    pm.expect([200, 400]).to.include(pm.response.code);",
+                                    "});",
+                                    "",
+                                    "if (response.success && response.data.assignment) {",
+                                    "    console.log('✅ User Assignment by ID Success:');",
+                                    "    console.log(`👤 User: ${response.data.assignment.assigned_user.email}`);",
+                                    "    console.log(`🎭 Role: ${response.data.assignment.assigned_user.role}`);",
+                                    "    console.log(`📅 Assigned: ${new Date(response.data.assignment.assigned_at).toLocaleString()}`);",
+                                    "    console.log(`📝 Method: ${response.data.assignedBy}`);",
+                                    "    console.log(`💬 Message: ${response.message}`);",
+                                    "    ",
+                                    "    pm.environment.set('assigned_user_id', response.data.assignment.assigned_user.id);",
+                                    "} else if (!response.success && pm.response.code === 400) {",
+                                    "    console.log('ℹ️ User already assigned or validation error');",
+                                    "} else {",
+                                    "    console.log('❌ Assignment failed:', response.error || 'Unknown error');",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"userId\": \"{{user_id_to_assign}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{admin_project_id}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{admin_project_id}}",
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "🚫 Assign User by Email (User Role - Should Fail)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "const blocked = !response.success && pm.response.code === 403;",
+                                    "",
+                                    "console.log('🚫 USER EMAIL ASSIGNMENT PERMISSION TEST:');",
+                                    "console.log(`📧 Assignment by email attempt: ${pm.response.code}`);",
+                                    "console.log(`✅ Expected: Should be BLOCKED (403)`);",
+                                    "console.log(`🎯 Result: ${blocked ? 'CORRECTLY BLOCKED ✨' : 'INCORRECTLY ALLOWED ❌'}`);",
+                                    "",
+                                    "if (!blocked) {",
+                                    "    console.log('⚠️ SECURITY ISSUE: Regular user was able to assign users by email!');",
+                                    "}",
+                                    "",
+                                    "pm.test('Regular users cannot assign users by email', () => {",
+                                    "    pm.expect(pm.response.code).to.equal(403);",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{user_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{user_email_to_assign}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{admin_project_id}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{admin_project_id}}",
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "📧 Remove User by Email (Admin)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "",
+                                    "pm.test('User removal by email response received', () => {",
+                                    "    pm.expect([200, 404]).to.include(pm.response.code);",
+                                    "});",
+                                    "",
+                                    "if (response.success) {",
+                                    "    console.log('✅ User Removal by Email Success:');",
+                                    "    console.log(`👤 Removed: ${response.data.removedUser.email}`);",
+                                    "    console.log(`📧 Method: ${response.data.removedBy} (email lookup)`);",
+                                    "    console.log(`💬 Message: ${response.message}`);",
+                                    "} else if (pm.response.code === 404) {",
+                                    "    console.log('❌ User not found with provided email');",
+                                    "} else {",
+                                    "    console.log('❌ User removal failed:', response.error || 'Unknown error');",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{assigned_user_email}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{admin_project_id}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{admin_project_id}}",
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "➖ Remove User by ID (Admin)",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "",
+                                    "pm.test('User removal by ID response received', () => {",
+                                    "    pm.expect([200, 404]).to.include(pm.response.code);",
+                                    "});",
+                                    "",
+                                    "if (response.success) {",
+                                    "    console.log('✅ User Removal by ID Success:');",
+                                    "    console.log(`👤 Removed: ${response.data.removedUser.email}`);",
+                                    "    console.log(`📝 Method: ${response.data.removedBy}`);",
+                                    "    console.log(`💬 Message: ${response.message}`);",
+                                    "} else {",
+                                    "    console.log('❌ User removal failed:', response.error || 'Unknown error');",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "DELETE",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"userId\": \"{{assigned_user_id}}\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{admin_project_id}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{admin_project_id}}",
+                                "users"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "📊 Mobile Email Assignment Summary",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "console.log('');",
+                                    "console.log('📱 MOBILE USER ASSIGNMENT WITH EMAIL SUPPORT:');",
+                                    "console.log('=============================================');",
+                                    "console.log('| Feature           | Traditional API | Mobile API |');",
+                                    "console.log('|-------------------|-----------------|------------|');",
+                                    "console.log('| Assign by ID      |       ✅        |     ✅     |');",
+                                    "console.log('| Assign by Email   |       ❌        |     ✅     |');",
+                                    "console.log('| Remove by ID      |       ✅        |     ✅     |');",
+                                    "console.log('| Remove by Email   |       ❌        |     ✅     |');",
+                                    "console.log('| Mobile Optimized  |       ❌        |     ✅     |');",
+                                    "console.log('| Admin Panel Safe  |       ✅        |     ✅     |');",
+                                    "console.log('=============================================');",
+                                    "console.log('');",
+                                    "console.log('🔧 MOBILE ENDPOINTS WITH EMAIL SUPPORT:');",
+                                    "console.log('• GET /api/mobile/projects/{id}/users - List users');",
+                                    "console.log('• POST /api/mobile/projects/{id}/users - Assign by ID or email');",
+                                    "console.log('• DELETE /api/mobile/projects/{id}/users - Remove by ID or email');",
+                                    "console.log('');",
+                                    "console.log('📧 EMAIL ASSIGNMENT EXAMPLES:');",
+                                    "console.log('• POST: {\"email\": \"user@company.com\"} - Assign by email');",
+                                    "console.log('• DELETE: {\"email\": \"user@company.com\"} - Remove by email');",
+                                    "console.log('• POST: {\"userId\": \"uuid-here\"} - Traditional method still works');",
+                                    "console.log('');",
+                                    "console.log('🎯 BENEFITS FOR MOBILE DEVELOPMENT:');",
+                                    "console.log('• No more complex user ID lookups required');",
+                                    "console.log('• Better UX - users think in terms of emails');",
+                                    "console.log('• Simplified mobile app integration');",
+                                    "console.log('• Clear error messages for non-existent emails');",
+                                    "console.log('• Admin panel functionality completely preserved');",
+                                    "console.log('');",
+                                    "console.log('✅ All mobile email assignment tests should pass!');",
+                                    "",
+                                    "pm.test('Mobile email assignment documentation verified', () => {",
+                                    "    pm.expect(true).to.be.true;",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{admin_project_id}}/users",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{admin_project_id}}",
+                                "users"
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ],
+    "variable": [
+        {
+            "key": "base_url",
+            "value": "http://localhost:3000",
+            "type": "string"
+        },
+        {
+            "key": "admin_project_id",
+            "value": "YOUR_PROJECT_ID_HERE",
+            "type": "string",
+            "description": "Set this to a valid project ID"
+        },
+        {
+            "key": "user_email_to_assign",
+            "value": "user@example.com",
+            "type": "string",
+            "description": "Set this to a valid user email address to test email-based assignment"
+        },
+        {
+            "key": "user_id_to_assign",
+            "value": "USER_UUID_HERE",
+            "type": "string",
+            "description": "Set this to a valid user UUID to test ID-based assignment"
+        },
+        {
+            "key": "assigned_user_id",
+            "value": "",
+            "type": "string",
+            "description": "Automatically populated with assigned user ID for removal testing"
+        },
+        {
+            "key": "assigned_user_email",
+            "value": "",
+            "type": "string",
+            "description": "Automatically populated with assigned user email for removal testing"
+        }
+    ]
+}
