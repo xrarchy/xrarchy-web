@@ -23,28 +23,28 @@ export async function GET(request: NextRequest) {
             userId = data.user.id;
             console.log('Projects API: Bearer token valid for user:', data.user.email);
         } else {
-            // Fall back to cookie-based session
+            // Fall back to cookie-based session (secure method)
             const supabase = await createClient();
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-            console.log('Projects API: Session check result:', {
-                hasSession: !!session,
-                sessionError: sessionError?.message,
-                userId: session?.user?.id,
-                userEmail: session?.user?.email
+            console.log('Projects API: User check result:', {
+                hasUser: !!user,
+                userError: userError?.message,
+                userId: user?.id,
+                userEmail: user?.email
             });
 
-            if (sessionError) {
-                console.error('Projects API: Session error:', sessionError);
-                return NextResponse.json({ error: 'Authentication error: ' + sessionError.message }, { status: 401 });
+            if (userError) {
+                console.error('Projects API: User error:', userError);
+                return NextResponse.json({ error: 'Authentication error: ' + userError.message }, { status: 401 });
             }
 
-            if (!session) {
-                console.log('Projects API: No session found');
-                return NextResponse.json({ error: 'Unauthorized - No active session found' }, { status: 401 });
+            if (!user) {
+                console.log('Projects API: No user found');
+                return NextResponse.json({ error: 'Unauthorized - No active user session found' }, { status: 401 });
             }
 
-            userId = session.user.id;
+            userId = user.id;
         }
 
         if (!userId) {
@@ -75,14 +75,25 @@ export async function GET(request: NextRequest) {
           *,
           created_by_profile:profiles!projects_created_by_fkey(email)
         `);
-        } else {
-            // Non-admin users can only see projects they're assigned to
+        } else if (userData.role === 'User' || userData.role === 'Archivist') {
+            // User and Archivist can only see projects they're assigned to
             const { data: assignedProjects } = await supabase
                 .from('project_assignments')
                 .select('project_id')
                 .eq('assigned_user_id', userId);
 
             const projectIds = assignedProjects?.map(ap => ap.project_id) || [];
+
+            if (projectIds.length === 0) {
+                // No assigned projects - return empty array
+                return NextResponse.json({
+                    success: true,
+                    data: {
+                        projects: [],
+                        totalCount: 0
+                    }
+                });
+            }
 
             projectsQuery = supabase
                 .from('projects')
@@ -91,6 +102,9 @@ export async function GET(request: NextRequest) {
           created_by_profile:profiles!projects_created_by_fkey(email)
         `)
                 .in('id', projectIds);
+        } else {
+            // Unknown role - deny access
+            return NextResponse.json({ error: 'Invalid user role' }, { status: 403 });
         }
 
         const { data: projects, error: projectsError } = await projectsQuery;
@@ -153,15 +167,15 @@ export async function POST(request: NextRequest) {
 
             userId = data.user.id;
         } else {
-            // Fall back to cookie-based session
+            // Fall back to cookie-based session (secure method)
             const supabase = await createClient();
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-            if (sessionError || !session) {
+            if (userError || !user) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
 
-            userId = session.user.id;
+            userId = user.id;
         }
 
         if (!userId) {
@@ -253,15 +267,15 @@ export async function DELETE(request: NextRequest) {
 
             userId = data.user.id;
         } else {
-            // Fall back to cookie-based session
+            // Fall back to cookie-based session (secure method)
             const supabase = await createClient();
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-            if (sessionError || !session) {
+            if (userError || !user) {
                 return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
             }
 
-            userId = session.user.id;
+            userId = user.id;
         }
 
         if (!userId) {

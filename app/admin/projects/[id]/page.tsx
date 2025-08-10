@@ -59,6 +59,11 @@ interface Project {
     description: string;
     created_at: string;
     updated_at: string;
+    latitude?: number;
+    longitude?: number;
+    location_name?: string;
+    address?: string;
+    location_description?: string;
     created_by_profile: {
         email: string;
     };
@@ -80,7 +85,15 @@ export default function AdminProjectDetail({ params }: { params: Promise<{ id: s
     const [showAddUser, setShowAddUser] = useState(false);
     const [showEditProject, setShowEditProject] = useState(false);
     const [selectedUser, setSelectedUser] = useState('');
-    const [editProject, setEditProject] = useState({ name: '', description: '' });
+    const [editProject, setEditProject] = useState({
+        name: '',
+        description: '',
+        location_name: '',
+        address: '',
+        location_description: '',
+        latitude: '',
+        longitude: ''
+    });
     const [projectId, setProjectId] = useState<string>('');
     const [deleteUserDialog, setDeleteUserDialog] = useState<{
         isOpen: boolean;
@@ -142,7 +155,12 @@ export default function AdminProjectDetail({ params }: { params: Promise<{ id: s
             setProject(data.project);
             setEditProject({
                 name: data.project.name,
-                description: data.project.description || ''
+                description: data.project.description || '',
+                location_name: data.project.location_name || '',
+                address: data.project.address || '',
+                location_description: data.project.location_description || '',
+                latitude: data.project.latitude?.toString() || '',
+                longitude: data.project.longitude?.toString() || ''
             });
             setError(null);
         } catch (error) {
@@ -235,6 +253,10 @@ export default function AdminProjectDetail({ params }: { params: Promise<{ id: s
                 return;
             }
 
+            // Success feedback
+            const addedUser = allUsers.find(u => u.id === selectedUser);
+            console.log(`✅ Successfully assigned ${addedUser?.email} to project`);
+
             setSelectedUser('');
             setShowAddUser(false);
             fetchProject();
@@ -260,6 +282,9 @@ export default function AdminProjectDetail({ params }: { params: Promise<{ id: s
                 setError(data.error || 'Failed to remove user from project');
                 return;
             }
+
+            // Success feedback
+            console.log(`✅ Successfully removed user from project`);
 
             setDeleteUserDialog({ isOpen: false, userId: '', userEmail: '' });
             fetchProject();
@@ -288,7 +313,6 @@ export default function AdminProjectDetail({ params }: { params: Promise<{ id: s
     };
 
     const availableUsers = allUsers.filter(user =>
-        (user.role === 'Admin' || user.role === 'Archivist') &&
         !project?.assignments?.some(assignment => assignment.assigned_user.id === user.id)
     );
 
@@ -368,25 +392,90 @@ export default function AdminProjectDetail({ params }: { params: Promise<{ id: s
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={updateProject} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Project Name</Label>
-                                <Input
-                                    id="name"
-                                    type="text"
-                                    value={editProject.name}
-                                    onChange={(e) => setEditProject(prev => ({ ...prev, name: e.target.value }))}
-                                    required
-                                />
+                            {/* Basic Information */}
+                            <div className="space-y-4 pb-4 border-b">
+                                <h4 className="font-medium text-sm text-muted-foreground">Basic Information</h4>
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Project Name</Label>
+                                    <Input
+                                        id="name"
+                                        type="text"
+                                        value={editProject.name}
+                                        onChange={(e) => setEditProject(prev => ({ ...prev, name: e.target.value }))}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="description">Description</Label>
+                                    <Input
+                                        id="description"
+                                        type="text"
+                                        value={editProject.description}
+                                        onChange={(e) => setEditProject(prev => ({ ...prev, description: e.target.value }))}
+                                        placeholder="Optional project description"
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="description">Description</Label>
-                                <Input
-                                    id="description"
-                                    type="text"
-                                    value={editProject.description}
-                                    onChange={(e) => setEditProject(prev => ({ ...prev, description: e.target.value }))}
-                                />
+
+                            {/* Location Information */}
+                            <div className="space-y-4 pb-4 border-b">
+                                <h4 className="font-medium text-sm text-muted-foreground">Location Information</h4>
+                                <div className="space-y-2">
+                                    <Label htmlFor="location_name">Location Name</Label>
+                                    <Input
+                                        id="location_name"
+                                        type="text"
+                                        value={editProject.location_name}
+                                        onChange={(e) => setEditProject(prev => ({ ...prev, location_name: e.target.value }))}
+                                        placeholder="e.g., Main Building, Site A"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="address">Address</Label>
+                                    <Input
+                                        id="address"
+                                        type="text"
+                                        value={editProject.address}
+                                        onChange={(e) => setEditProject(prev => ({ ...prev, address: e.target.value }))}
+                                        placeholder="Full street address"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="location_description">Location Description</Label>
+                                    <Input
+                                        id="location_description"
+                                        type="text"
+                                        value={editProject.location_description}
+                                        onChange={(e) => setEditProject(prev => ({ ...prev, location_description: e.target.value }))}
+                                        placeholder="Additional location details"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="latitude">Latitude</Label>
+                                        <Input
+                                            id="latitude"
+                                            type="number"
+                                            step="any"
+                                            value={editProject.latitude}
+                                            onChange={(e) => setEditProject(prev => ({ ...prev, latitude: e.target.value }))}
+                                            placeholder="e.g., 40.7128"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="longitude">Longitude</Label>
+                                        <Input
+                                            id="longitude"
+                                            type="number"
+                                            step="any"
+                                            value={editProject.longitude}
+                                            onChange={(e) => setEditProject(prev => ({ ...prev, longitude: e.target.value }))}
+                                            placeholder="e.g., -74.0060"
+                                        />
+                                    </div>
+                                </div>
                             </div>
+
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <Button type="submit" className="w-full sm:w-auto">Update Project</Button>
                                 <Button type="button" variant="outline" onClick={() => setShowEditProject(false)} className="w-full sm:w-auto">
@@ -426,6 +515,43 @@ export default function AdminProjectDetail({ params }: { params: Promise<{ id: s
                 </Card>
             </div>
 
+            {/* Location Information */}
+            {(project.location_name || project.address || project.location_description || project.latitude || project.longitude) && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Location Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {project.location_name && (
+                            <div>
+                                <div className="text-sm font-medium text-muted-foreground">Location Name</div>
+                                <div className="text-sm">{project.location_name}</div>
+                            </div>
+                        )}
+                        {project.address && (
+                            <div>
+                                <div className="text-sm font-medium text-muted-foreground">Address</div>
+                                <div className="text-sm">{project.address}</div>
+                            </div>
+                        )}
+                        {project.location_description && (
+                            <div>
+                                <div className="text-sm font-medium text-muted-foreground">Description</div>
+                                <div className="text-sm">{project.location_description}</div>
+                            </div>
+                        )}
+                        {(project.latitude && project.longitude) && (
+                            <div>
+                                <div className="text-sm font-medium text-muted-foreground">Coordinates</div>
+                                <div className="text-sm font-mono">
+                                    {project.latitude.toFixed(6)}, {project.longitude.toFixed(6)}
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Team Members Management */}
             <Card>
                 <CardHeader>
@@ -445,21 +571,34 @@ export default function AdminProjectDetail({ params }: { params: Promise<{ id: s
                         <div className="mb-6 p-4 border rounded-lg">
                             <form onSubmit={addUserToProject} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="user">Select User (Admin/Archivist only)</Label>
+                                    <Label htmlFor="user">Select User</Label>
                                     <Select value={selectedUser} onValueChange={setSelectedUser}>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Choose an Admin or Archivist" />
+                                            <SelectValue placeholder="Choose any user to assign" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {availableUsers.length > 0 ? (
-                                                availableUsers.map((user) => (
-                                                    <SelectItem key={user.id} value={user.id}>
-                                                        {user.email} ({user.role})
-                                                    </SelectItem>
-                                                ))
+                                                <>
+                                                    {/* Group by role for better organization */}
+                                                    {['Admin', 'Archivist', 'User'].map(role => {
+                                                        const roleUsers = availableUsers.filter(user => user.role === role);
+                                                        return roleUsers.length > 0 ? (
+                                                            <div key={role}>
+                                                                <div className="px-2 py-1 text-xs font-semibold text-muted-foreground bg-muted rounded-t-md">
+                                                                    {role}s ({roleUsers.length})
+                                                                </div>
+                                                                {roleUsers.map((user) => (
+                                                                    <SelectItem key={user.id} value={user.id}>
+                                                                        {user.email}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </div>
+                                                        ) : null;
+                                                    })}
+                                                </>
                                             ) : (
                                                 <SelectItem value="" disabled>
-                                                    No Admin/Archivist users available
+                                                    No users available
                                                 </SelectItem>
                                             )}
                                         </SelectContent>

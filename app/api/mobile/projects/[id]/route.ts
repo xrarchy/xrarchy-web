@@ -69,11 +69,16 @@ export async function GET(
             }
         }
 
-        // Get project details
+        // Get project details with all location fields
         const { data: project, error: projectError } = await supabaseAdmin
             .from('projects')
             .select(`
                 *,
+                latitude,
+                longitude,
+                location_name,
+                address,
+                location_description,
                 created_by_profile:profiles!projects_created_by_fkey(email)
             `)
             .eq('id', projectId)
@@ -128,6 +133,13 @@ export async function GET(
                     name: project.name,
                     description: project.description,
                     status: project.status,
+                    location: {
+                        latitude: project.latitude,
+                        longitude: project.longitude,
+                        name: project.location_name,
+                        address: project.address,
+                        description: project.location_description
+                    },
                     createdAt: project.created_at,
                     updatedAt: project.updated_at,
                     createdBy: {
@@ -189,8 +201,30 @@ export async function PUT(
         }
 
         const token = authHeader.substring(7);
-        const { name, description, status } = await request.json();
+        const { name, description, status, location } = await request.json();
         const projectId = resolvedParams.id;
+
+        // Validate location fields if provided
+        if (location?.latitude !== undefined || location?.longitude !== undefined) {
+            const lat = parseFloat(location.latitude);
+            const lng = parseFloat(location.longitude);
+
+            if (isNaN(lat) || lat < -90 || lat > 90) {
+                return NextResponse.json({
+                    success: false,
+                    error: 'Invalid latitude. Must be between -90 and 90',
+                    code: 'INVALID_LATITUDE'
+                }, { status: 400 });
+            }
+
+            if (isNaN(lng) || lng < -180 || lng > 180) {
+                return NextResponse.json({
+                    success: false,
+                    error: 'Invalid longitude. Must be between -180 and 180',
+                    code: 'INVALID_LONGITUDE'
+                }, { status: 400 });
+            }
+        }
 
         const supabaseAdmin = await createClient(true);
 
@@ -231,7 +265,7 @@ export async function PUT(
         }
 
         // Prepare update data
-        const updateData: Record<string, string | null> = {
+        const updateData: Record<string, string | number | null> = {
             updated_at: new Date().toISOString()
         };
 
@@ -239,12 +273,41 @@ export async function PUT(
         if (description !== undefined) updateData.description = description?.trim() || null;
         if (status !== undefined) updateData.status = status;
 
+        // Handle location updates
+        if (location) {
+            if (location.latitude !== undefined && location.longitude !== undefined) {
+                updateData.latitude = parseFloat(location.latitude);
+                updateData.longitude = parseFloat(location.longitude);
+            }
+            if (location.name !== undefined) {
+                updateData.location_name = location.name?.trim() || null;
+            }
+            if (location.address !== undefined) {
+                updateData.address = location.address?.trim() || null;
+            }
+            if (location.description !== undefined) {
+                updateData.location_description = location.description?.trim() || null;
+            }
+        }
+
         // Update project
         const { data: project, error: updateError } = await supabaseAdmin
             .from('projects')
             .update(updateData)
             .eq('id', projectId)
-            .select()
+            .select(`
+                id,
+                name,
+                description,
+                status,
+                latitude,
+                longitude,
+                location_name,
+                address,
+                location_description,
+                created_at,
+                updated_at
+            `)
             .single();
 
         if (updateError) {
@@ -273,6 +336,13 @@ export async function PUT(
                     name: project.name,
                     description: project.description,
                     status: project.status,
+                    location: {
+                        latitude: project.latitude,
+                        longitude: project.longitude,
+                        name: project.location_name,
+                        address: project.address,
+                        description: project.location_description
+                    },
                     createdAt: project.created_at,
                     updatedAt: project.updated_at
                 }

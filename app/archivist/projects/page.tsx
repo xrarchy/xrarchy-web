@@ -196,7 +196,7 @@ export default function ArchivistProjects() {
                             <Badge variant="secondary">Archivist</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            {projects.length} project{projects.length !== 1 ? 's' : ''} assigned
+                            {projects?.length || 0} project{(projects?.length || 0) !== 1 ? 's' : ''} assigned
                         </div>
                     </div>
                 </CardContent>
@@ -210,7 +210,7 @@ export default function ArchivistProjects() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {projects.length > 0 ? (
+                    {(projects?.length || 0) > 0 ? (
                         <>
                             {/* Desktop Table View */}
                             <div className="hidden md:block rounded-md border">
@@ -227,7 +227,7 @@ export default function ArchivistProjects() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {projects.map((project) => (
+                                        {projects?.map((project) => (
                                             <TableRow key={project.id}>
                                                 <TableCell className="font-medium">
                                                     <Button
@@ -288,7 +288,7 @@ export default function ArchivistProjects() {
 
                             {/* Mobile Card View */}
                             <div className="md:hidden space-y-4">
-                                {projects.map((project) => (
+                                {projects?.map((project) => (
                                     <Card key={project.id} className="border">
                                         <CardContent className="p-4">
                                             <div className="space-y-3">

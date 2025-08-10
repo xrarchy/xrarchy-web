@@ -69,7 +69,7 @@ export async function GET(
             }
         }
 
-        // Get project files
+        // Get project files with uploader info using separate queries for better reliability
         const { data: files, error: filesError } = await supabaseAdmin
             .from('files')
             .select(`
@@ -78,10 +78,7 @@ export async function GET(
                 file_size,
                 file_url,
                 created_at,
-                uploaded_by:uploaded_by (
-                    id,
-                    email
-                )
+                uploaded_by
             `)
             .eq('project_id', projectId)
             .order('created_at', { ascending: false });
@@ -95,19 +92,31 @@ export async function GET(
             }, { status: 500 });
         }
 
-        interface FileWithUploader {
+        // Get uploader profiles separately
+        const uploaderIds = [...new Set(files?.map(f => f.uploaded_by).filter(Boolean))];
+        const { data: profiles } = uploaderIds.length > 0
+            ? await supabaseAdmin
+                .from('profiles')
+                .select('id, email')
+                .in('id', uploaderIds)
+            : { data: [] };
+
+        // Create lookup map for profiles with proper typing
+        type ProfileData = { id: string; email: string };
+        const profileMap = new Map<string, ProfileData>(
+            (profiles || []).map((p: ProfileData) => [p.id, p])
+        );
+
+        interface FileData {
             id: string;
             file_name: string;
             file_size: number;
             file_url: string;
             created_at: string;
-            uploaded_by: {
-                id: string;
-                email: string;
-            }[] | null;
+            uploaded_by: string;
         }
 
-        const formattedFiles = (files || []).map((file: FileWithUploader) => ({
+        const formattedFiles = (files || []).map((file: FileData) => ({
             id: file.id,
             name: file.file_name,
             size: file.file_size,
@@ -115,7 +124,7 @@ export async function GET(
             url: file.file_url,
             uploadedAt: file.created_at,
             uploadedBy: {
-                email: file.uploaded_by?.[0]?.email || 'Unknown'
+                email: profileMap.get(file.uploaded_by)?.email || 'Unknown'
             }
         }));
 
@@ -219,19 +228,10 @@ export async function POST(
             }, { status: 400 });
         }
 
-        // Validate file size (10MB limit for mobile)
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.size > maxSize) {
-            return NextResponse.json({
-                success: false,
-                error: 'File size exceeds 10MB limit',
-                code: 'FILE_TOO_LARGE'
-            }, { status: 400 });
-        }
-
         // Generate unique file name
         const timestamp = Date.now();
-        const originalName = fileName || file.name;
+        // Prioritize the actual file name over custom fileName parameter
+        const originalName = file.name || fileName || 'unnamed_file';
         const sanitizedFilename = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
         const uniqueFilename = `${timestamp}_${sanitizedFilename}`;
         const filePath = `projects/${projectId}/${uniqueFilename}`;

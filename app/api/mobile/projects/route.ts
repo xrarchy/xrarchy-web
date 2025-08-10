@@ -49,23 +49,27 @@ export async function GET(request: Request) {
         let projectsQuery;
 
         if (userProfile.role === 'Admin') {
-            // Admin can see all projects
+            // Only Admin can see all projects
             projectsQuery = supabaseAdmin
                 .from('projects')
                 .select(`
                     *,
                     created_by_profile:profiles!projects_created_by_fkey(email)
                 `);
-        } else {
-            // Non-admin users can only see projects they're assigned to
+        } else if (userProfile.role === 'User' || userProfile.role === 'Archivist') {
+            // User and Archivist can only see projects they're assigned to
+            console.log(`📱 Mobile API: Checking assignments for ${userProfile.role} user: ${userData.user.email}`);
+
             const { data: assignedProjects } = await supabaseAdmin
                 .from('project_assignments')
                 .select('project_id')
                 .eq('assigned_user_id', userId);
 
+            console.log(`📱 Mobile API: Assignment query result:`, assignedProjects);
             const projectIds = assignedProjects?.map(ap => ap.project_id) || [];
 
             if (projectIds.length === 0) {
+                console.log(`📱 Mobile API: ${userProfile.role} user has no assigned projects`);
                 return NextResponse.json({
                     success: true,
                     data: {
@@ -76,13 +80,27 @@ export async function GET(request: Request) {
                 });
             }
 
+            console.log(`📱 Mobile API: ${userProfile.role} user assigned to ${projectIds.length} projects:`, projectIds);
+
             projectsQuery = supabaseAdmin
                 .from('projects')
                 .select(`
                     *,
+                    latitude,
+                    longitude,
+                    location_name,
+                    address,
+                    location_description,
                     created_by_profile:profiles!projects_created_by_fkey(email)
                 `)
                 .in('id', projectIds);
+        } else {
+            // Unknown role - deny access
+            return NextResponse.json({
+                success: false,
+                error: 'Invalid user role',
+                code: 'INVALID_ROLE'
+            }, { status: 403 });
         }
 
         const { data: projects, error: projectsError } = await projectsQuery;
@@ -115,7 +133,13 @@ export async function GET(request: Request) {
                     id: project.id,
                     name: project.name,
                     description: project.description,
-                    status: project.status,
+                    location: {
+                        latitude: project.latitude,
+                        longitude: project.longitude,
+                        name: project.location_name,
+                        address: project.address,
+                        description: project.location_description
+                    },
                     createdAt: project.created_at,
                     updatedAt: project.updated_at,
                     createdBy: {
@@ -163,7 +187,7 @@ export async function POST(request: Request) {
         }
 
         const token = authHeader.substring(7);
-        const { name, description } = await request.json();
+        const { name, description, location } = await request.json();
 
         if (!name || name.trim() === '') {
             return NextResponse.json({
@@ -171,6 +195,28 @@ export async function POST(request: Request) {
                 error: 'Project name is required',
                 code: 'MISSING_PROJECT_NAME'
             }, { status: 400 });
+        }
+
+        // Validate location fields if provided
+        if (location?.latitude !== undefined || location?.longitude !== undefined) {
+            const lat = parseFloat(location.latitude);
+            const lng = parseFloat(location.longitude);
+
+            if (isNaN(lat) || lat < -90 || lat > 90) {
+                return NextResponse.json({
+                    success: false,
+                    error: 'Invalid latitude. Must be between -90 and 90',
+                    code: 'INVALID_LATITUDE'
+                }, { status: 400 });
+            }
+
+            if (isNaN(lng) || lng < -180 || lng > 180) {
+                return NextResponse.json({
+                    success: false,
+                    error: 'Invalid longitude. Must be between -180 and 180',
+                    code: 'INVALID_LONGITUDE'
+                }, { status: 400 });
+            }
         }
 
         const supabaseAdmin = await createClient(true);
@@ -211,15 +257,58 @@ export async function POST(request: Request) {
             }, { status: 403 });
         }
 
-        // Create project
+        // Prepare project data
+        interface ProjectData {
+            name: string;
+            description: string | null;
+            created_by: string;
+            latitude?: number;
+            longitude?: number;
+            location_name?: string;
+            address?: string;
+            location_description?: string;
+        }
+
+        const projectData: ProjectData = {
+            name: name.trim(),
+            description: description?.trim() || null,
+            created_by: userId
+        };
+
+        // Add location data if provided
+        if (location) {
+            if (location.latitude !== undefined && location.longitude !== undefined) {
+                projectData.latitude = parseFloat(location.latitude);
+                projectData.longitude = parseFloat(location.longitude);
+            }
+            if (location.name) {
+                projectData.location_name = location.name.trim();
+            }
+            if (location.address) {
+                projectData.address = location.address.trim();
+            }
+            if (location.description) {
+                projectData.location_description = location.description.trim();
+            }
+        }
+
+        // Create project with all location fields
         const { data: project, error: projectError } = await supabaseAdmin
             .from('projects')
-            .insert({
-                name: name.trim(),
-                description: description?.trim() || null,
-                created_by: userId
-            })
-            .select()
+            .insert(projectData)
+            .select(`
+                id,
+                name,
+                description,
+                latitude,
+                longitude,
+                location_name,
+                address,
+                location_description,
+                created_at,
+                updated_at,
+                created_by
+            `)
             .single();
 
         if (projectError) {
@@ -227,7 +316,8 @@ export async function POST(request: Request) {
             return NextResponse.json({
                 success: false,
                 error: 'Failed to create project',
-                code: 'PROJECT_CREATION_ERROR'
+                code: 'PROJECT_CREATION_ERROR',
+                details: projectError.message
             }, { status: 500 });
         }
 
@@ -243,9 +333,11 @@ export async function POST(request: Request) {
 
         if (assignmentError) {
             console.error('📱 Auto-assignment error:', assignmentError.message);
-            // Don't fail project creation for assignment error
+            // Don't fail project creation for assignment error, but log it
+            console.warn('📱 Project created but auto-assignment failed:', assignmentError.message);
         }
 
+        // Return project with complete location structure
         return NextResponse.json({
             success: true,
             message: 'Project created successfully',
@@ -254,9 +346,16 @@ export async function POST(request: Request) {
                     id: project.id,
                     name: project.name,
                     description: project.description,
-                    status: project.status,
+                    location: {
+                        latitude: project.latitude,
+                        longitude: project.longitude,
+                        name: project.location_name,
+                        address: project.address,
+                        description: project.location_description
+                    },
                     createdAt: project.created_at,
-                    updatedAt: project.updated_at
+                    updatedAt: project.updated_at,
+                    createdBy: userId
                 }
             }
         }, { status: 201 });
@@ -266,7 +365,8 @@ export async function POST(request: Request) {
         return NextResponse.json({
             success: false,
             error: 'Internal server error',
-            code: 'SERVER_ERROR'
+            code: 'SERVER_ERROR',
+            details: error instanceof Error ? error.message : 'Unknown error'
         }, { status: 500 });
     }
 }

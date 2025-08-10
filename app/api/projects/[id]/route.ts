@@ -15,9 +15,9 @@ export async function GET(
 
         const supabase = await createClient();
 
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
+        // Get current user (secure method)
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
@@ -25,7 +25,7 @@ export async function GET(
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         if (profileError) {
@@ -40,7 +40,7 @@ export async function GET(
                 .from('project_assignments')
                 .select('id')
                 .eq('project_id', id)
-                .eq('assigned_user_id', session.user.id)
+                .eq('assigned_user_id', user.id)
                 .single();
 
             hasAccess = !!assignment;
@@ -160,7 +160,15 @@ export async function PUT(
 ) {
     try {
         const { id } = await context.params;
-        const { name, description } = await request.json();
+        const {
+            name,
+            description,
+            location_name,
+            address,
+            location_description,
+            latitude,
+            longitude
+        } = await request.json();
 
         if (!id) {
             return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
@@ -172,9 +180,9 @@ export async function PUT(
 
         const supabase = await createClient();
 
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
+        // Get current user (secure method)
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
@@ -182,7 +190,7 @@ export async function PUT(
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         if (profileError) {
@@ -199,7 +207,7 @@ export async function PUT(
                 .eq('id', id)
                 .single();
 
-            if (project?.created_by === session.user.id) {
+            if (project?.created_by === user.id) {
                 canEdit = true;
             }
             // Removed project role logic - only Admin and project creator can edit
@@ -209,14 +217,45 @@ export async function PUT(
             return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
         }
 
+        // Prepare update data
+        interface ProjectUpdateData {
+            name: string;
+            description: string | null;
+            updated_at: string;
+            location_name?: string | null;
+            address?: string | null;
+            location_description?: string | null;
+            latitude?: number;
+            longitude?: number;
+        }
+
+        const updateData: ProjectUpdateData = {
+            name: name.trim(),
+            description: description?.trim() || null,
+            updated_at: new Date().toISOString()
+        };
+
+        // Add location fields if provided
+        if (location_name !== undefined) {
+            updateData.location_name = location_name?.trim() || null;
+        }
+        if (address !== undefined) {
+            updateData.address = address?.trim() || null;
+        }
+        if (location_description !== undefined) {
+            updateData.location_description = location_description?.trim() || null;
+        }
+        if (latitude !== undefined && latitude !== '') {
+            updateData.latitude = parseFloat(latitude);
+        }
+        if (longitude !== undefined && longitude !== '') {
+            updateData.longitude = parseFloat(longitude);
+        }
+
         // Update the project
         const { data: updatedProject, error } = await supabase
             .from('projects')
-            .update({
-                name: name.trim(),
-                description: description?.trim() || null,
-                updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', id)
             .select()
             .single();
@@ -252,9 +291,9 @@ export async function DELETE(
 
         const supabase = await createClient();
 
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
+        // Get current user (secure method)
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
@@ -262,7 +301,7 @@ export async function DELETE(
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         if (profileError) {
@@ -278,7 +317,7 @@ export async function DELETE(
                 .eq('id', id)
                 .single();
 
-            canDelete = project?.created_by === session.user.id;
+            canDelete = project?.created_by === user.id;
         }
 
         if (!canDelete) {

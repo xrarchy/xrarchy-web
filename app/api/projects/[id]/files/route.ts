@@ -323,18 +323,18 @@ export async function GET(
         if (!id) return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
 
         const supabase = await createClient();
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
 
         const { data: profile, error: profileError } = await supabase
-            .from('profiles').select('role').eq('id', session.user.id).single();
+            .from('profiles').select('role').eq('id', user.id).single();
         if (profileError) return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
 
         let hasAccess = profile.role === 'Admin';
         if (!hasAccess) {
             const { data: assignment } = await supabase
                 .from('project_assignments').select('id')
-                .eq('project_id', id).eq('assigned_user_id', session.user.id).single();
+                .eq('project_id', id).eq('assigned_user_id', user.id).single();
             hasAccess = !!assignment;
         }
         if (!hasAccess) return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -400,9 +400,6 @@ export async function POST(
         const formData = await request.formData();
         const file = formData.get('file') as File;
         if (!file) return NextResponse.json({ error: 'File is required' }, { status: 400 });
-
-        const maxSize = 10 * 1024 * 1024;
-        if (file.size > maxSize) return NextResponse.json({ error: 'File size must be less than 10MB' }, { status: 400 });
 
         const timestamp = Date.now();
         const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -491,9 +488,9 @@ export async function DELETE(
 
         const supabase = await createClient();
 
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
@@ -516,12 +513,12 @@ export async function DELETE(
         const { data: profile } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         if (profile?.role === 'Admin') {
             canDelete = true;
-        } else if (fileRecord.uploaded_by === session.user.id) {
+        } else if (fileRecord.uploaded_by === user.id) {
             // Users can delete their own files
             canDelete = true;
         }

@@ -1,9 +1,29 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
+export async function GET() {
+    return NextResponse.json({
+        message: 'Admin API is working. Use POST method for actions.',
+        availableActions: ['getUserRole', 'getUsers', 'updateUserRole']
+    });
+}
+
 export async function POST(request: Request) {
     try {
-        const { action, userId, role } = await request.json();
+        let requestBody;
+        try {
+            const text = await request.text();
+            if (!text.trim()) {
+                console.error('Empty request body received');
+                return NextResponse.json({ error: 'Request body is required' }, { status: 400 });
+            }
+            requestBody = JSON.parse(text);
+        } catch (jsonError) {
+            console.error('Invalid JSON in request body:', jsonError);
+            return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+        }
+
+        const { action, userId, role } = requestBody;
         console.log('Admin API called with action:', action);
 
         // For getUserRole action, we don't need admin access

@@ -175,7 +175,7 @@ export default function ArchivistDashboard() {
                             <Badge variant="secondary">Archivist</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                            {projects.length} project{projects.length !== 1 ? 's' : ''} assigned
+                            {projects?.length || 0} project{(projects?.length || 0) !== 1 ? 's' : ''} assigned
                         </div>
                     </div>
                 </CardContent>
@@ -188,7 +188,7 @@ export default function ArchivistDashboard() {
                         <div className="flex items-center space-x-2">
                             <FolderOpen className="h-8 w-8 text-blue-600" />
                             <div>
-                                <p className="text-2xl font-bold">{projects.length}</p>
+                                <p className="text-2xl font-bold">{projects?.length || 0}</p>
                                 <p className="text-sm text-muted-foreground">Assigned Projects</p>
                             </div>
                         </div>
@@ -201,7 +201,7 @@ export default function ArchivistDashboard() {
                             <Files className="h-8 w-8 text-green-600" />
                             <div>
                                 <p className="text-2xl font-bold">
-                                    {projects.reduce((sum, p) => sum + (p.file_count || 0), 0)}
+                                    {projects?.reduce((sum, p) => sum + (p.file_count || 0), 0) || 0}
                                 </p>
                                 <p className="text-sm text-muted-foreground">Total Files</p>
                             </div>
@@ -215,7 +215,7 @@ export default function ArchivistDashboard() {
                             <Users className="h-8 w-8 text-purple-600" />
                             <div>
                                 <p className="text-2xl font-bold">
-                                    {projects.reduce((sum, p) => sum + (p.assignment_count || 0), 0)}
+                                    {projects?.reduce((sum, p) => sum + (p.assignment_count || 0), 0) || 0}
                                 </p>
                                 <p className="text-sm text-muted-foreground">Team Members</p>
                             </div>
@@ -229,7 +229,7 @@ export default function ArchivistDashboard() {
                             <Calendar className="h-8 w-8 text-orange-600" />
                             <div>
                                 <p className="text-2xl font-bold">
-                                    {projects.filter(p => new Date(p.created_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length}
+                                    {projects?.filter(p => new Date(p.created_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length || 0}
                                 </p>
                                 <p className="text-sm text-muted-foreground">Recent Projects</p>
                             </div>
@@ -247,9 +247,9 @@ export default function ArchivistDashboard() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {projects.length > 0 ? (
+                    {(projects?.length || 0) > 0 ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {projects.map((project) => (
+                            {projects?.map((project) => (
                                 <Card key={project.id} className="border hover:shadow-md transition-shadow">
                                     <CardContent className="p-4">
                                         <div className="space-y-3">

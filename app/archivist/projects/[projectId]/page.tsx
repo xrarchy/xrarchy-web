@@ -41,6 +41,7 @@ interface ProjectFile {
     uploaded_by_user: {
         email: string;
     };
+    file_url?: string; // Add this for consistency with the files API
 }
 
 interface Project {
@@ -154,6 +155,73 @@ export default function ArchivistProjectDetail({ params }: { params: Promise<{ p
         } catch (error) {
             console.error('File upload error:', error);
             setError('Failed to upload file');
+        }
+    };
+
+    const downloadFile = async (file: ProjectFile) => {
+        try {
+            console.log('Download attempt for file:', file);
+            const fileUrl = file.file_url || file.url; // Use file_url if available, fallback to url
+            console.log('File URL:', fileUrl);
+
+            const { data, error } = await supabase.storage
+                .from('project-files')
+                .createSignedUrl(fileUrl, 3600);
+
+            console.log('Signed URL response:', { data, error });
+
+            if (error) {
+                console.error('Signed URL error:', error);
+                setError(`Failed to generate download link: ${error.message}`);
+                return;
+            }
+
+            if (data?.signedUrl) {
+                console.log('Signed URL created:', data.signedUrl);
+
+                try {
+                    // Use fetch to get the file data and trigger download
+                    const response = await fetch(data.signedUrl);
+                    console.log('Fetch response status:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+                    }
+
+                    const blob = await response.blob();
+                    console.log('Blob created:', blob.type, blob.size);
+
+                    const url = window.URL.createObjectURL(blob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = file.name;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+
+                    console.log('Triggering download for:', file.name);
+                    link.click();
+
+                    // Clean up
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                        console.log('Download cleanup completed');
+                    }, 100);
+
+                } catch (fetchError) {
+                    console.error('Fetch/download error:', fetchError);
+                    // Fallback: open in new tab if fetch fails
+                    console.log('Falling back to direct URL approach');
+                    window.open(data.signedUrl, '_blank');
+                }
+            } else {
+                console.error('No signed URL returned');
+                setError('Failed to generate download link');
+            }
+        } catch (error) {
+            console.error('Download error:', error);
+            setError(`Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
 
@@ -369,10 +437,9 @@ export default function ArchivistProjectDetail({ params }: { params: Promise<{ p
                                                 <Button
                                                     size="sm"
                                                     variant="outline"
-                                                    onClick={() => window.open(file.url, '_blank')}
+                                                    onClick={() => downloadFile(file)}
                                                 >
-                                                    <Download className="h-3 w-3 mr-1" />
-                                                    Download
+                                                    <Download className="h-3 w-3" />
                                                 </Button>
                                             </TableCell>
                                         </TableRow>

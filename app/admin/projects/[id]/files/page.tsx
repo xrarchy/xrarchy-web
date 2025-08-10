@@ -127,10 +127,6 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 10 * 1024 * 1024) {
-                setError('File size must be less than 10MB');
-                return;
-            }
             setSelectedFile(file);
             setError(null);
         }
@@ -207,23 +203,51 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
 
     const downloadFile = async (file: ProjectFile) => {
         try {
-            const { data } = await supabase.storage
+            console.log('Download attempt for file:', file);
+            console.log('File URL:', file.file_url);
+
+            const { data, error } = await supabase.storage
                 .from('project-files')
                 .createSignedUrl(file.file_url, 3600);
 
+            console.log('Signed URL response:', { data, error });
+
             if (data?.signedUrl) {
+                console.log('Signed URL created:', data.signedUrl);
+
+                // Use fetch to get the file data and trigger download
+                const response = await fetch(data.signedUrl);
+                console.log('Fetch response status:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+                }
+
+                const blob = await response.blob();
+                console.log('Blob created:', blob.type, blob.size);
+
+                const url = window.URL.createObjectURL(blob);
+
                 const link = document.createElement('a');
-                link.href = data.signedUrl;
+                link.href = url;
                 link.download = file.filename;
+                link.style.display = 'none';
                 document.body.appendChild(link);
+
+                console.log('Triggering download for:', file.filename);
                 link.click();
+
+                // Clean up
                 document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+                console.log('Download cleanup completed');
             } else {
+                console.error('Failed to generate signed URL:', error);
                 setError('Failed to generate download link');
             }
         } catch (error) {
             console.error('Download error:', error);
-            setError('Failed to download file');
+            setError(`Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
 
@@ -307,7 +331,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                 <Card>
                     <CardHeader>
                         <CardTitle>Upload File</CardTitle>
-                        <CardDescription>Add a new file to this project (max 10MB)</CardDescription>
+                        <CardDescription>Add a new file to this project</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={uploadFile} className="space-y-4">

@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Users as UsersIcon, Settings, AlertCircle, Trash2, AlertTriangle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Users as UsersIcon, Settings, AlertCircle, Trash2, AlertTriangle, Edit, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,8 @@ export default function Users() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [updatingRole, setUpdatingRole] = useState<string | null>(null);
   const [deleteDialog, setDeleteDialog] = useState<{
     isOpen: boolean;
     userId: string;
@@ -155,6 +158,46 @@ export default function Users() {
     return userId !== currentUserId;
   };
 
+  const handleRoleUpdate = async (userId: string, newRole: string) => {
+    setUpdatingRole(userId);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'updateRole',
+          userId,
+          role: newRole
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to update user role');
+        return;
+      }
+
+      // Update the user's role in local state
+      setUsers(prev => prev.map(user =>
+        user.id === userId
+          ? { ...user, role: newRole as 'Admin' | 'Archivist' | 'User' }
+          : user
+      ));
+
+      setEditingUser(null);
+    } catch (error) {
+      console.error('Role update error:', error);
+      setError('Failed to update user role');
+    } finally {
+      setUpdatingRole(null);
+    }
+  };
+
   return (
     <div className="container mx-auto p-4 md:p-6 max-w-6xl space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
@@ -164,7 +207,7 @@ export default function Users() {
             <h1 className="text-2xl md:text-3xl font-bold">User Directory</h1>
             <p className="text-sm md:text-base text-muted-foreground">
               {currentUserRole === 'Admin'
-                ? 'View and manage all users in the system'
+                ? 'View, manage, and edit user roles and permissions in the system'
                 : 'Your user profile information'
               }
             </p>
@@ -254,7 +297,7 @@ export default function Users() {
           </CardTitle>
           <CardDescription className="text-sm">
             {currentUserRole === 'Admin'
-              ? 'Complete list of all registered users and their roles'
+              ? 'Manage user roles and permissions. Click the edit icon to change a user\'s role.'
               : 'Your user profile information and role details'
             }
           </CardDescription>
@@ -269,13 +312,56 @@ export default function Users() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium truncate pr-2">{user.email}</span>
-                        <Badge variant={
-                          user.role === 'Admin' ? 'default' :
-                            user.role === 'Archivist' ? 'secondary' :
-                              'outline'
-                        } className="text-xs">
-                          {user.role}
-                        </Badge>
+                        {editingUser === user.id ? (
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={user.role}
+                              onValueChange={(newRole) => handleRoleUpdate(user.id, newRole)}
+                              disabled={updatingRole === user.id}
+                            >
+                              <SelectTrigger className="w-[120px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="User">User</SelectItem>
+                                <SelectItem value="Archivist">Archivist</SelectItem>
+                                <SelectItem value="Admin">Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {updatingRole === user.id && (
+                              <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingUser(null)}
+                              disabled={updatingRole === user.id}
+                              className="h-6 w-6 p-0"
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant={
+                              user.role === 'Admin' ? 'default' :
+                                user.role === 'Archivist' ? 'secondary' :
+                                  'outline'
+                            } className="text-xs">
+                              {user.role}
+                            </Badge>
+                            {user.id !== currentUserId && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingUser(user.id)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <Edit className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
@@ -325,9 +411,9 @@ export default function Users() {
                   <TableRow>
                     <TableHead className="w-[120px]">User ID</TableHead>
                     <TableHead>Email Address</TableHead>
-                    <TableHead className="w-[130px]">Role</TableHead>
+                    <TableHead className="w-[150px]">Role</TableHead>
                     <TableHead className="w-[120px]">Access Level</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead className="w-[120px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -339,13 +425,55 @@ export default function Users() {
                         </TableCell>
                         <TableCell className="font-medium">{user.email}</TableCell>
                         <TableCell>
-                          <Badge variant={
-                            user.role === 'Admin' ? 'default' :
-                              user.role === 'Archivist' ? 'secondary' :
-                                'outline'
-                          }>
-                            {user.role}
-                          </Badge>
+                          {editingUser === user.id ? (
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={user.role}
+                                onValueChange={(newRole) => handleRoleUpdate(user.id, newRole)}
+                                disabled={updatingRole === user.id}
+                              >
+                                <SelectTrigger className="w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="User">User</SelectItem>
+                                  <SelectItem value="Archivist">Archivist</SelectItem>
+                                  <SelectItem value="Admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              {updatingRole === user.id && (
+                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingUser(null)}
+                                disabled={updatingRole === user.id}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Badge variant={
+                                user.role === 'Admin' ? 'default' :
+                                  user.role === 'Archivist' ? 'secondary' :
+                                    'outline'
+                              }>
+                                {user.role}
+                              </Badge>
+                              {user.id !== currentUserId && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingUser(user.id)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {user.role === 'Admin' ? 'Full Access' :

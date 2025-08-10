@@ -15,9 +15,9 @@ export async function GET(
 
         const supabase = await createClient();
 
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
+        // Get current user
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
@@ -25,7 +25,7 @@ export async function GET(
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
         if (profileError) {
@@ -40,7 +40,7 @@ export async function GET(
                 .from('project_assignments')
                 .select('id')
                 .eq('project_id', id)
-                .eq('assigned_user_id', session.user.id)
+                .eq('assigned_user_id', user.id)
                 .single();
 
             hasAccess = !!assignment;
@@ -96,9 +96,9 @@ export async function POST(
 
         const supabase = await createClient();
 
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
+        // Get current user
+        const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !currentUser) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
@@ -106,7 +106,7 @@ export async function POST(
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', currentUser.id)
             .single();
 
         if (profileError) {
@@ -150,7 +150,7 @@ export async function POST(
                 .insert({
                     project_id: id,
                     assigned_user_id: userId,
-                    assigned_by: session.user.id,
+                    assigned_by: currentUser.id,
                     assigned_at: new Date().toISOString()
                 })
                 .select(`
@@ -197,9 +197,9 @@ export async function DELETE(
 
         const supabase = await createClient();
 
-        // Get current session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) {
+        // Get current user
+        const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
+        if (authError || !currentUser) {
             return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
@@ -207,14 +207,14 @@ export async function DELETE(
         const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
-            .eq('id', session.user.id)
+            .eq('id', currentUser.id)
             .single();
 
         if (profileError) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
         }
 
-        const canRemove = profile.role === 'Admin' || profile.role === 'Archivist' || userId === session.user.id;
+        const canRemove = profile.role === 'Admin' || profile.role === 'Archivist' || userId === currentUser.id;
 
         if (!canRemove) {
             return NextResponse.json({ error: 'Only Admin, Archivist, or the user themselves can remove assignments' }, { status: 403 });

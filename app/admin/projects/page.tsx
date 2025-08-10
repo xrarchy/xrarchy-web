@@ -28,7 +28,9 @@ import {
     Edit,
     Trash2,
     AlertTriangle,
-    ArrowLeft
+    ArrowLeft,
+    MapPin,
+    Globe
 } from 'lucide-react';
 
 interface Project {
@@ -37,11 +39,33 @@ interface Project {
     description: string;
     created_at: string;
     updated_at: string;
-    created_by_profile: {
+    created_by_email: string;
+    created_by_profile?: {
         email: string;
     };
     assignment_count: number;
     file_count: number;
+    latitude?: number;
+    longitude?: number;
+    location_name?: string;
+    address?: string;
+    location_description?: string;
+    location?: {
+        latitude?: number;
+        longitude?: number;
+        name?: string;
+        address?: string;
+        description?: string;
+    };
+}
+
+interface Permissions {
+    canCreate: boolean;
+    canEditAll: boolean;
+    canDeleteAll: boolean;
+    canEditAssigned: boolean;
+    canViewAll: boolean;
+    canViewAssigned: boolean;
 }
 
 export default function AdminProjects() {
@@ -49,7 +73,26 @@ export default function AdminProjects() {
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [newProject, setNewProject] = useState({ name: '', description: '' });
+    const [userRole, setUserRole] = useState<string>('');
+    const [permissions, setPermissions] = useState<Permissions>({
+        canCreate: false,
+        canEditAll: false,
+        canDeleteAll: false,
+        canEditAssigned: false,
+        canViewAll: false,
+        canViewAssigned: false
+    });
+    const [newProject, setNewProject] = useState({
+        name: '',
+        description: '',
+        location: {
+            latitude: '',
+            longitude: '',
+            name: '',
+            address: '',
+            description: ''
+        }
+    });
     const [isCreatingProject, setIsCreatingProject] = useState(false);
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; project: Project | null; isDeleting: boolean }>({
         isOpen: false,
@@ -59,8 +102,8 @@ export default function AdminProjects() {
     const supabase = createClient();
     const router = useRouter();
 
-    // Check if user is admin
-    const checkAdminAccess = useCallback(async () => {
+    // Check user access and role
+    const checkUserAccess = useCallback(async () => {
         try {
             const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
             if (sessionError || !sessionData.session) {
@@ -74,14 +117,22 @@ export default function AdminProjects() {
                 .eq('id', sessionData.session.user.id)
                 .single();
 
-            if (userError || userData?.role !== 'Admin') {
+            if (userError) {
+                console.error('User data fetch error:', userError);
+                router.push('/');
+                return false;
+            }
+
+            // Allow Admin, Archivist, and User to access
+            const allowedRoles = ['Admin', 'Archivist', 'User'];
+            if (!allowedRoles.includes(userData?.role)) {
                 router.push('/');
                 return false;
             }
 
             return true;
         } catch (error) {
-            console.error('Admin access check error:', error);
+            console.error('Access check error:', error);
             router.push('/');
             return false;
         }
@@ -91,7 +142,7 @@ export default function AdminProjects() {
         try {
             setLoading(true);
 
-            const hasAccess = await checkAdminAccess();
+            const hasAccess = await checkUserAccess();
             if (!hasAccess) return;
 
             // Get current session for auth token
@@ -102,33 +153,95 @@ export default function AdminProjects() {
             }
 
             // Fetch projects from API with auth token
-            const response = await fetch('/api/projects', {
+            const response = await fetch('/api/admin/projects', {
                 headers: {
                     'Authorization': `Bearer ${sessionData.session.access_token}`,
                     'Content-Type': 'application/json'
                 }
             });
-            const data = await response.json();
 
-            if (!response.ok) {
-                setError(data.error || 'Failed to fetch projects');
+            console.log('📋 Response received:', {
+                ok: response.ok,
+                status: response.status,
+                statusText: response.statusText,
+                headers: Object.fromEntries(response.headers.entries())
+            });
+
+            let data;
+            try {
+                data = await response.json();
+            } catch (parseError) {
+                console.error('📋 JSON Parse Error:', parseError);
+                setError('Failed to parse server response');
                 return;
             }
 
+            console.log('📋 Admin API Response:', {
+                ok: response.ok,
+                status: response.status,
+                data: data
+            });
+
+            if (!response.ok) {
+                console.error('📋 API Error:', data);
+                setError(data.error || `Failed to fetch projects (${response.status})`);
+                return;
+            }
+
+            console.log('📋 Raw API Data:', data);
+            console.log('📋 Data type:', typeof data);
+            console.log('📋 Is Array:', Array.isArray(data));
+            console.log('📋 Data keys:', Object.keys(data || {}));
+
+            // Handle different response structures and extract permissions
+            let projects = [];
+            let responsePermissions = {
+                canCreate: false,
+                canEditAll: false,
+                canDeleteAll: false,
+                canEditAssigned: false,
+                canViewAll: false,
+                canViewAssigned: false
+            };
+            let responseUserRole = '';
+
+            if (data.success && data.data?.projects) {
+                projects = data.data.projects;
+                responsePermissions = data.data.permissions || responsePermissions;
+                responseUserRole = data.data.user_role || '';
+            } else if (data.projects) {
+                projects = data.projects;
+            } else if (Array.isArray(data)) {
+                projects = data;
+            } else {
+                console.error('Unexpected API response structure:', data);
+                setError('Unexpected response format from server');
+                return;
+            }
+
+            // Update state with projects, permissions, and user role
+            setUserRole(responseUserRole);
+            setPermissions(responsePermissions);
+
             // Sort projects by creation date (newest first)
-            const sortedProjects = data.projects.sort((a: Project, b: Project) =>
+            const sortedProjects = projects.sort((a: Project, b: Project) =>
                 new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             );
 
             setProjects(sortedProjects);
             setError(null);
         } catch (error) {
-            console.error('Projects fetch error:', error);
-            setError('Failed to load projects');
+            console.error('📋 Fetch Error:', error);
+            console.error('📋 Error details:', {
+                message: error.message,
+                stack: error.stack,
+                type: error.constructor.name
+            });
+            setError(`Failed to load projects: ${error.message}`);
         } finally {
             setLoading(false);
         }
-    }, [supabase, checkAdminAccess]);
+    }, [supabase, checkUserAccess]);
 
     useEffect(() => {
         fetchProjects();
@@ -152,13 +265,23 @@ export default function AdminProjects() {
                 return;
             }
 
-            const response = await fetch('/api/projects', {
+            const response = await fetch('/api/admin/projects', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${sessionData.session.access_token}`
                 },
-                body: JSON.stringify(newProject),
+                body: JSON.stringify({
+                    name: newProject.name,
+                    description: newProject.description,
+                    location: {
+                        latitude: newProject.location.latitude ? parseFloat(newProject.location.latitude) : undefined,
+                        longitude: newProject.location.longitude ? parseFloat(newProject.location.longitude) : undefined,
+                        name: newProject.location.name || undefined,
+                        address: newProject.location.address || undefined,
+                        description: newProject.location.description || undefined
+                    }
+                }),
             });
 
             const data = await response.json();
@@ -168,7 +291,17 @@ export default function AdminProjects() {
                 return;
             }
 
-            setNewProject({ name: '', description: '' });
+            setNewProject({
+                name: '',
+                description: '',
+                location: {
+                    latitude: '',
+                    longitude: '',
+                    name: '',
+                    address: '',
+                    description: ''
+                }
+            });
             setShowCreateForm(false);
             fetchProjects();
         } catch (error) {
@@ -190,7 +323,7 @@ export default function AdminProjects() {
                 return;
             }
 
-            const response = await fetch(`/api/projects/${projectId}`, {
+            const response = await fetch(`/api/admin/projects/${projectId}`, {
                 method: 'DELETE',
                 headers: {
                     'Authorization': `Bearer ${sessionData.session.access_token}`
@@ -269,19 +402,57 @@ export default function AdminProjects() {
                     </Button>
                     <div className="flex items-center space-x-2">
                         <FolderOpen className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
-                        <h1 className="text-2xl sm:text-3xl font-bold">Project Management</h1>
+                        <h1 className="text-2xl sm:text-3xl font-bold">Projects</h1>
                     </div>
                 </div>
-                <Button onClick={() => setShowCreateForm(!showCreateForm)} className="w-full sm:w-auto">
-                    <Plus className="h-4 w-4 mr-2" />
-                    New Project
-                </Button>
+                {permissions.canCreate && (
+                    <Button onClick={() => setShowCreateForm(!showCreateForm)} className="w-full sm:w-auto">
+                        <Plus className="h-4 w-4 mr-2" />
+                        New Project
+                    </Button>
+                )}
+                {!permissions.canCreate && userRole && (
+                    <div className="text-sm text-gray-500 italic">
+                        {userRole === 'Archivist' ? 'Archivists can view and edit assigned projects' :
+                            userRole === 'User' ? 'Users can browse projects (read-only)' :
+                                'Limited access'}
+                    </div>
+                )}
             </div>
+
+            {/* Role and Permission Indicator */}
+            {userRole && (
+                <div className="mb-4">
+                    <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${userRole === 'Admin' ? 'bg-red-100 text-red-800' :
+                            userRole === 'Archivist' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                        }`}>
+                        <span className="mr-1">👤</span>
+                        {userRole} Access
+                        {userRole === 'Admin' ? ' - Full Control' :
+                            userRole === 'Archivist' ? ' - Assigned Projects Only' :
+                                ' - Read Only'}
+                    </div>
+                </div>
+            )}
 
             {error && (
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
+                    <AlertDescription className="flex items-center justify-between">
+                        <span>{error}</span>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                                setError(null);
+                                fetchProjects();
+                            }}
+                            className="ml-2 h-6"
+                        >
+                            Retry
+                        </Button>
+                    </AlertDescription>
                 </Alert>
             )}
 
@@ -313,6 +484,127 @@ export default function AdminProjects() {
                                     onChange={(e) => setNewProject(prev => ({ ...prev, description: e.target.value }))}
                                     placeholder="Enter project description"
                                 />
+                            </div>
+
+                            {/* Location Section */}
+                            <div className="space-y-4 pt-4 border-t">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-2">
+                                        <MapPin className="h-4 w-4 text-blue-600" />
+                                        <Label className="text-sm font-medium">Location Information (Optional)</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setNewProject(prev => ({
+                                                ...prev,
+                                                location: {
+                                                    latitude: '41.8902',
+                                                    longitude: '12.4922',
+                                                    name: 'Colosseum',
+                                                    address: 'Piazza del Colosseo, 1, 00184 Roma RM, Italy',
+                                                    description: 'Ancient Roman amphitheatre in the centre of Rome'
+                                                }
+                                            }))}
+                                        >
+                                            <Globe className="h-3 w-3 mr-1" />
+                                            Colosseum
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setNewProject(prev => ({
+                                                ...prev,
+                                                location: {
+                                                    latitude: '48.8584',
+                                                    longitude: '2.2945',
+                                                    name: 'Eiffel Tower',
+                                                    address: 'Champ de Mars, 5 Avenue Anatole France, 75007 Paris, France',
+                                                    description: 'Iron lattice tower on the Champ de Mars in Paris'
+                                                }
+                                            }))}
+                                        >
+                                            <Globe className="h-3 w-3 mr-1" />
+                                            Eiffel Tower
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="latitude">Latitude</Label>
+                                        <Input
+                                            id="latitude"
+                                            type="number"
+                                            step="any"
+                                            value={newProject.location.latitude}
+                                            onChange={(e) => setNewProject(prev => ({
+                                                ...prev,
+                                                location: { ...prev.location, latitude: e.target.value }
+                                            }))}
+                                            placeholder="e.g., 41.8902 (Colosseum)"
+                                            min="-90"
+                                            max="90"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="longitude">Longitude</Label>
+                                        <Input
+                                            id="longitude"
+                                            type="number"
+                                            step="any"
+                                            value={newProject.location.longitude}
+                                            onChange={(e) => setNewProject(prev => ({
+                                                ...prev,
+                                                location: { ...prev.location, longitude: e.target.value }
+                                            }))}
+                                            placeholder="e.g., 12.4922 (Colosseum)"
+                                            min="-180"
+                                            max="180"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="locationName">Location Name</Label>
+                                    <Input
+                                        id="locationName"
+                                        type="text"
+                                        value={newProject.location.name}
+                                        onChange={(e) => setNewProject(prev => ({
+                                            ...prev,
+                                            location: { ...prev.location, name: e.target.value }
+                                        }))}
+                                        placeholder="e.g., Colosseum, Eiffel Tower, etc."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="address">Address</Label>
+                                    <Input
+                                        id="address"
+                                        type="text"
+                                        value={newProject.location.address}
+                                        onChange={(e) => setNewProject(prev => ({
+                                            ...prev,
+                                            location: { ...prev.location, address: e.target.value }
+                                        }))}
+                                        placeholder="Full address of the location"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="locationDescription">Location Description</Label>
+                                    <Input
+                                        id="locationDescription"
+                                        type="text"
+                                        value={newProject.location.description}
+                                        onChange={(e) => setNewProject(prev => ({
+                                            ...prev,
+                                            location: { ...prev.location, description: e.target.value }
+                                        }))}
+                                        placeholder="Additional context about the location"
+                                    />
+                                </div>
                             </div>
                             <div className="flex flex-col sm:flex-row gap-2">
                                 <Button
@@ -357,6 +649,7 @@ export default function AdminProjects() {
                                     <TableRow>
                                         <TableHead>Name</TableHead>
                                         <TableHead>Description</TableHead>
+                                        <TableHead>Location</TableHead>
                                         <TableHead>Created By</TableHead>
                                         <TableHead>Created</TableHead>
                                         <TableHead>Members</TableHead>
@@ -380,7 +673,27 @@ export default function AdminProjects() {
                                                 {project.description || 'No description'}
                                             </TableCell>
                                             <TableCell className="text-sm">
-                                                {project.created_by_profile?.email || 'Unknown'}
+                                                {project.location_name || project.location?.name ? (
+                                                    <div className="flex items-start space-x-1">
+                                                        <MapPin className="h-3 w-3 mt-0.5 text-blue-600" />
+                                                        <div className="flex flex-col">
+                                                            <span className="font-medium">
+                                                                {project.location_name || project.location?.name}
+                                                            </span>
+                                                            {((project.latitude && project.longitude) ||
+                                                                (project.location?.latitude && project.location?.longitude)) && (
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {(project.latitude || project.location?.latitude)?.toFixed(4)}, {(project.longitude || project.location?.longitude)?.toFixed(4)}
+                                                                    </span>
+                                                                )}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-muted-foreground">No location</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {project.created_by_email || project.created_by_profile?.email || 'Unknown'}
                                             </TableCell>
                                             <TableCell className="text-sm">
                                                 <div className="flex items-center space-x-1">
@@ -402,28 +715,38 @@ export default function AdminProjects() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex space-x-1">
+                                                    {/* View/Edit Button - Always visible for assigned users */}
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => router.push(`/admin/projects/${project.id}`)}
+                                                        title={permissions.canEditAssigned ? "Edit project" : "View project"}
                                                     >
                                                         <Edit className="h-3 w-3" />
                                                     </Button>
+
+                                                    {/* Files Button - Always visible */}
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => router.push(`/admin/projects/${project.id}/files`)}
+                                                        title="View files"
                                                     >
                                                         <Files className="h-3 w-3" />
                                                     </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => openDeleteModal(project)}
-                                                        className="text-red-600 hover:text-red-700"
-                                                    >
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </Button>
+
+                                                    {/* Delete Button - Only for Admin */}
+                                                    {permissions.canDeleteAll && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => openDeleteModal(project)}
+                                                            className="text-red-600 hover:text-red-700"
+                                                            title="Delete project"
+                                                        >
+                                                            <Trash2 className="h-3 w-3" />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                         </TableRow>

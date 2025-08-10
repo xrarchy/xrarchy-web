@@ -149,10 +149,6 @@ export default function ArchivistProjectFiles({ params }: { params: Promise<{ pr
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 10 * 1024 * 1024) {
-                setError('File size must be less than 10MB');
-                return;
-            }
             setSelectedFile(file);
             setError(null);
         }
@@ -249,23 +245,67 @@ export default function ArchivistProjectFiles({ params }: { params: Promise<{ pr
 
     const downloadFile = async (file: ProjectFile) => {
         try {
-            const { data } = await supabase.storage
+            console.log('Download attempt for file:', file);
+            console.log('File URL:', file.file_url);
+
+            const { data, error } = await supabase.storage
                 .from('project-files')
                 .createSignedUrl(file.file_url, 3600);
 
+            console.log('Signed URL response:', { data, error });
+
+            if (error) {
+                console.error('Signed URL error:', error);
+                setError(`Failed to generate download link: ${error.message}`);
+                return;
+            }
+
             if (data?.signedUrl) {
-                const link = document.createElement('a');
-                link.href = data.signedUrl;
-                link.download = file.filename;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                console.log('Signed URL created:', data.signedUrl);
+
+                try {
+                    // Use fetch to get the file data and trigger download
+                    const response = await fetch(data.signedUrl);
+                    console.log('Fetch response status:', response.status, response.statusText);
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+                    }
+
+                    const blob = await response.blob();
+                    console.log('Blob created:', blob.type, blob.size);
+
+                    const url = window.URL.createObjectURL(blob);
+
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = file.filename;
+                    link.style.display = 'none';
+                    document.body.appendChild(link);
+
+                    console.log('Triggering download for:', file.filename);
+                    link.click();
+
+                    // Clean up
+                    setTimeout(() => {
+                        document.body.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                        console.log('Download cleanup completed');
+                    }, 100);
+
+                } catch (fetchError) {
+                    console.error('Fetch/download error:', fetchError);
+                    // Fallback: open in new tab if fetch fails
+                    console.log('Falling back to direct URL approach');
+                    window.open(data.signedUrl, '_blank');
+                }
             } else {
+                console.error('No signed URL returned');
                 setError('Failed to generate download link');
             }
         } catch (error) {
             console.error('Download error:', error);
-            setError('Failed to download file');
+            setError(`Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     };
 
@@ -348,7 +388,7 @@ export default function ArchivistProjectFiles({ params }: { params: Promise<{ pr
                 <Card>
                     <CardHeader>
                         <CardTitle>Upload File</CardTitle>
-                        <CardDescription>Add a new file to this project (max 10MB)</CardDescription>
+                        <CardDescription>Add a new file to this project</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={uploadFile} className="space-y-4">

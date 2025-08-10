@@ -65,6 +65,12 @@ export default function Home() {
       setCurrentUserRole(userProfile.role);
       setCurrentUserEmail(sessionData.session.user.email || 'Unknown User');
 
+      // Redirect Archivists to their dedicated dashboard
+      if (userProfile.role === 'Archivist') {
+        router.push('/archivist');
+        return;
+      }
+
       // Fetch user's assigned projects
       const response = await fetch('/api/projects', {
         headers: {
@@ -167,7 +173,7 @@ export default function Home() {
               <Badge variant="secondary">{currentUserRole}</Badge>
             </div>
             <div className="text-sm text-muted-foreground">
-              {projects.length} project{projects.length !== 1 ? 's' : ''} assigned
+              {projects?.length || 0} project{(projects?.length || 0) !== 1 ? 's' : ''} assigned for work
             </div>
           </div>
         </CardContent>
@@ -176,15 +182,15 @@ export default function Home() {
       {/* Projects Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Projects</CardTitle>
+          <CardTitle>Your Assigned Work</CardTitle>
           <CardDescription>
-            Projects you have access to
+            Projects assigned to you for active work
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {projects.length > 0 ? (
+          {(projects?.length || 0) > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {projects.map((project) => (
+              {projects?.map((project) => (
                 <Card key={project.id} className="border hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="space-y-3">
@@ -220,15 +226,21 @@ export default function Home() {
                           size="sm"
                           variant="outline"
                           onClick={() => {
-                            const route = currentUserRole === 'Admin'
-                              ? `/admin/projects/${project.id}/files`
-                              : `/archivist/projects/${project.id}/files`;
+                            let route;
+                            if (currentUserRole === 'Admin') {
+                              route = `/admin/projects/${project.id}/files`;
+                            } else if (currentUserRole === 'Archivist') {
+                              route = `/archivist/projects/${project.id}/files`;
+                            } else {
+                              // For regular Users, go to the user project detail page
+                              route = `/projects/${project.id}`;
+                            }
                             router.push(route);
                           }}
                           className="flex-1"
                         >
                           <Files className="h-3 w-3 mr-1" />
-                          Files
+                          {currentUserRole === 'User' ? 'View' : 'Files'}
                         </Button>
                         {currentUserRole === 'Admin' && (
                           <Button
@@ -250,8 +262,20 @@ export default function Home() {
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No projects assigned</p>
-              <p className="text-sm">Contact an admin to get assigned to projects</p>
+              <p>No assigned work</p>
+              <p className="text-sm">You haven't been assigned to any projects for work yet</p>
+              {currentUserRole === 'User' && (
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push('/projects')}
+                    className="text-sm"
+                  >
+                    <FolderOpen className="h-4 w-4 mr-2" />
+                    Browse All Projects
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

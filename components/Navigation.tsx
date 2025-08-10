@@ -147,8 +147,20 @@ export default function Navigation({ showFullNav = true }: NavigationProps) {
                                     }}
                                 >
                                     <FolderOpen className="h-4 w-4 mr-2" />
-                                    Projects
+                                    {userRole === 'User' ? 'Browse Projects' :
+                                        userRole === 'Archivist' ? 'My Projects' : 'Projects'}
                                 </Button>
+
+                                {userRole === 'User' && (
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => handleNavigation('/')}
+                                        className="text-green-600 hover:text-green-700"
+                                    >
+                                        <Home className="h-4 w-4 mr-2" />
+                                        My Work
+                                    </Button>
+                                )}
                             </>
                         )}
                     </div>
@@ -283,8 +295,20 @@ export default function Navigation({ showFullNav = true }: NavigationProps) {
                                         className="justify-start"
                                     >
                                         <FolderOpen className="h-4 w-4 mr-2" />
-                                        Projects
+                                        {userRole === 'User' ? 'Browse Projects' :
+                                            userRole === 'Archivist' ? 'My Projects' : 'Projects'}
                                     </Button>
+
+                                    {userRole === 'User' && (
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => handleNavigation('/')}
+                                            className="justify-start text-green-600 hover:text-green-700"
+                                        >
+                                            <Home className="h-4 w-4 mr-2" />
+                                            My Work
+                                        </Button>
+                                    )}
 
                                     {/* Sign Out */}
                                     <div className="pt-2 border-t border-border">
