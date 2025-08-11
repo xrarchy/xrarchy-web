@@ -346,6 +346,8 @@ export async function GET(
                 filename:file_name,
                 file_size,
                 file_url,
+                latitude,
+                longitude,
                 created_at,
                 uploaded_by:uploaded_by (
                     id,
@@ -399,7 +401,26 @@ export async function POST(
 
         const formData = await request.formData();
         const file = formData.get('file') as File;
+        const latitude = formData.get('latitude') as string;
+        const longitude = formData.get('longitude') as string;
+        
         if (!file) return NextResponse.json({ error: 'File is required' }, { status: 400 });
+
+        // Validate coordinates if provided
+        let lat = null;
+        let lng = null;
+        
+        if (latitude && longitude) {
+            lat = parseFloat(latitude);
+            lng = parseFloat(longitude);
+            
+            // Basic validation for valid coordinate ranges
+            if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+                return NextResponse.json({ 
+                    error: 'Invalid coordinates. Latitude must be between -90 and 90, longitude between -180 and 180' 
+                }, { status: 400 });
+            }
+        }
 
         const timestamp = Date.now();
         const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
@@ -435,6 +456,8 @@ export async function POST(
                 file_name: file.name,
                 file_size: file.size,
                 file_url: filePath,
+                latitude: lat,
+                longitude: lng,
                 uploaded_by: user.id, // must match auth.uid()
                 created_at: new Date().toISOString()
             })
@@ -443,6 +466,8 @@ export async function POST(
                 filename:file_name,
                 file_size,
                 file_url,
+                latitude,
+                longitude,
                 created_at,
                 uploaded_by:uploaded_by (
                     id,

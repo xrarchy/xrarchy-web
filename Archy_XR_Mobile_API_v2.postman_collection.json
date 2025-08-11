@@ -2,7 +2,7 @@
     "info": {
         "_postman_id": "archy-xr-mobile-api-v2-final",
         "name": "Archy XR Mobile API - v2.0 Final",
-        "description": "Complete mobile API collection for Archy XR with corrected access control, project browsing, file management, user assignment with EMAIL SUPPORT, and comprehensive testing.\n\n🔑 KEY FEATURES:\n• Corrected User Access Control (Users can view ALL projects but work only on assigned ones)\n• Project Browse endpoint separate from assigned projects\n• File download capabilities with signed URLs\n• User Assignment Management (Assign/Unassign users by ID OR EMAIL)\n• Email-based user assignment for mobile apps (no more UUID lookups!)\n• Comprehensive role-based testing\n• Fixed database schema issues\n• Complete workflow testing\n\n📊 ACCESS CONTROL MATRIX:\n| Role      | View Projects | Create | Modify | Delete | Download Files | Assign Users | Assign by Email |\n|-----------|---------------|--------|--------|---------|-----------|--------------|-----------------|\n| Admin     | All projects  |   ✅   |   ✅   |   ✅   |     ✅     |      ✅      |        ✅       |\n| User      | All projects  |   ❌   |   ❌   |   ❌   |     ✅     |      ❌      |        ❌       |\n| Archivist | Only assigned |   ❌   |   ❌   |   ❌   |     ✅     |      ✅      |        ✅       |\n\n📁 NEW MOBILE ENDPOINTS:\n• File Download: GET /api/mobile/projects/{id}/files/{fileId}/download\n• User Assignment by ID: POST/DELETE /api/mobile/projects/{id}/users (userId)\n• User Assignment by EMAIL: POST/DELETE /api/mobile/projects/{id}/users (email)\n• List Project Users: GET /api/mobile/projects/{id}/users\n• Enhanced mobile-optimized responses with success/error structure\n• Backward compatible with existing admin panel APIs\n\n📧 EMAIL ASSIGNMENT FEATURES:\n• Assign users by email address (no UUID lookup required)\n• Remove users by email address (mobile-friendly)\n• Automatic user validation and error handling\n• Clear error messages for non-existent emails\n• Enhanced mobile app integration support\n\nUpdated: August 2025 - Production Ready with Email Support",
+        "description": "Complete mobile API collection for Archy XR with corrected access control, project browsing, file management with LOCATION SUPPORT, user assignment with EMAIL SUPPORT, and comprehensive testing.\n\n🔑 KEY FEATURES:\n• Corrected User Access Control (Users can view ALL projects but work only on assigned ones)\n• Project Browse endpoint separate from assigned projects\n• Complete File CRUD with Location Support (latitude/longitude)\n• File download capabilities with signed URLs\n• User Assignment Management (Assign/Unassign users by ID OR EMAIL)\n• Email-based user assignment for mobile apps (no more UUID lookups!)\n• Comprehensive role-based testing\n• Fixed database schema issues\n• Complete workflow testing\n\n📊 ACCESS CONTROL MATRIX:\n| Role      | View Projects | Create | Modify | Delete | Download Files | Assign Users | Assign by Email |\n|-----------|---------------|--------|--------|---------|-----------|--------------|-----------------|\n| Admin     | All projects  |   ✅   |   ✅   |   ✅   |     ✅     |      ✅      |        ✅       |\n| User      | All projects  |   ❌   |   ❌   |   ❌   |     ✅     |      ❌      |        ❌       |\n| Archivist | Only assigned |   ❌   |   ❌   |   ❌   |     ✅     |      ✅      |        ✅       |\n\n📁 NEW MOBILE ENDPOINTS:\n• File Download: GET /api/mobile/projects/{id}/files/{fileId}/download\n• File Upload with Location: POST /api/mobile/projects/{id}/files (with lat/lng)\n• File Details: GET /api/mobile/projects/{id}/files/{fileId}\n• Partial File Update: PUT /api/mobile/projects/{id}/files/{fileId} (location, name)\n• File Delete: DELETE /api/mobile/projects/{id}/files/{fileId}\n• User Assignment by ID: POST/DELETE /api/mobile/projects/{id}/users (userId)\n• User Assignment by EMAIL: POST/DELETE /api/mobile/projects/{id}/users (email)\n• List Project Users: GET /api/mobile/projects/{id}/users\n• Enhanced mobile-optimized responses with success/error structure\n• Backward compatible with existing admin panel APIs\n\n📧 EMAIL ASSIGNMENT FEATURES:\n• Assign users by email address (no UUID lookup required)\n• Remove users by email address (mobile-friendly)\n• Automatic user validation and error handling\n• Clear error messages for non-existent emails\n• Enhanced mobile app integration support\n\n📍 LOCATION FEATURES:\n• Upload files with GPS coordinates (latitude/longitude)\n• Update file location without re-uploading file\n• Coordinate validation (-90/90 lat, -180/180 lng)\n• Partial updates (update only location, name, or both)\n• Remove location data by setting to null\n• Mobile-optimized for GPS-enabled devices\n\nUpdated: August 2025 - Production Ready with Location & Email Support",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
     "auth": {
@@ -1231,6 +1231,189 @@
             ]
         },
         {
+            "name": "🚨 Location & Error Testing",
+            "description": "Test error scenarios and edge cases for location features",
+            "item": [
+                {
+                    "name": "❌ Invalid Coordinates Test",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "const shouldBe400 = pm.response.code === 400;",
+                                    "console.log('🚨 Invalid Coordinates Test:');",
+                                    "console.log('⚠️ Status:', pm.response.code);",
+                                    "console.log('❌ Error:', response.error);",
+                                    "console.log('🔢 Code:', response.code);",
+                                    "console.log('✅ Expected:', shouldBe400 ? 'CORRECT - Blocked invalid coordinates' : 'WRONG - Should block invalid coordinates');",
+                                    "",
+                                    "pm.test('Invalid coordinates blocked', () => {",
+                                    "    pm.expect(pm.response.code).to.equal(400);",
+                                    "    pm.expect(response.success).to.be.false;",
+                                    "    pm.expect(response.code).to.include('INVALID');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"latitude\": 95.0,\n  \"longitude\": 200.0\n}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{sample_project_id}}/files/{{sample_file_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{sample_project_id}}",
+                                "files",
+                                "{{sample_file_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "❌ Empty Update Test",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "const shouldBe400 = pm.response.code === 400;",
+                                    "console.log('🚨 Empty Update Test:');",
+                                    "console.log('⚠️ Status:', pm.response.code);",
+                                    "console.log('❌ Error:', response.error);",
+                                    "console.log('🔢 Code:', response.code);",
+                                    "console.log('✅ Expected:', shouldBe400 ? 'CORRECT - Blocked empty update' : 'WRONG - Should block empty updates');",
+                                    "",
+                                    "pm.test('Empty update blocked', () => {",
+                                    "    pm.expect(pm.response.code).to.equal(400);",
+                                    "    pm.expect(response.success).to.be.false;",
+                                    "    pm.expect(response.code).to.equal('NO_UPDATE_FIELDS');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{admin_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{}"
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{sample_project_id}}/files/{{sample_file_id}}",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{sample_project_id}}",
+                                "files",
+                                "{{sample_file_id}}"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "❌ Non-existent File Test",
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "exec": [
+                                    "const response = pm.response.json();",
+                                    "const shouldBe404 = pm.response.code === 404;",
+                                    "console.log('🚨 Non-existent File Test:');",
+                                    "console.log('⚠️ Status:', pm.response.code);",
+                                    "console.log('❌ Error:', response.error);",
+                                    "console.log('🔢 Code:', response.code);",
+                                    "console.log('✅ Expected:', shouldBe404 ? 'CORRECT - File not found' : 'WRONG - Should return 404');",
+                                    "",
+                                    "pm.test('Non-existent file returns 404', () => {",
+                                    "    pm.expect(pm.response.code).to.equal(404);",
+                                    "    pm.expect(response.success).to.be.false;",
+                                    "    pm.expect(response.code).to.equal('FILE_NOT_FOUND');",
+                                    "});"
+                                ]
+                            }
+                        }
+                    ],
+                    "request": {
+                        "auth": {
+                            "type": "bearer",
+                            "bearer": [
+                                {
+                                    "key": "token",
+                                    "value": "{{user_token}}",
+                                    "type": "string"
+                                }
+                            ]
+                        },
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{sample_project_id}}/files/non-existent-file-id",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{sample_project_id}}",
+                                "files",
+                                "non-existent-file-id"
+                            ]
+                        }
+                    }
+                }
+            ]
+        },
+        {
             "name": "�🚀 Complete Workflow Test",
             "description": "End-to-end mobile app workflow demonstration",
             "item": [
@@ -1241,21 +1424,33 @@
                             "listen": "test",
                             "script": {
                                 "exec": [
-                                    "console.log('📱 MOBILE APP WORKFLOW v2.0:');",
+                                    "console.log('📱 MOBILE APP WORKFLOW v2.0 + LOCATION:');",
                                     "console.log('');",
                                     "console.log('1. 🔐 Login Users → Get access tokens for all roles');",
                                     "console.log('2. 🔒 Access Control → Verify corrected permission matrix');",
                                     "console.log('3. 🔍 Browse Projects → Discover all available projects');",
                                     "console.log('4. 📋 List Assigned → See only assigned projects');",
                                     "console.log('5. 📁 Project Details → Get specific project information');",
-                                    "console.log('6. 📎 File Management → Access files based on permissions');",
+                                    "console.log('6. 📎 File CRUD → Upload, view, update, delete files');",
+                                    "console.log('7. 📍 Location Features → GPS coordinates with files');",
+                                    "console.log('8. 🚨 Error Testing → Validate edge cases');",
                                     "console.log('');",
                                     "console.log('🎯 KEY IMPROVEMENTS IN v2.0:');",
                                     "console.log('   • Fixed User access control (view all, modify none)');",
+                                    "console.log('   • Complete File CRUD with Location Support');",
+                                    "console.log('   • Partial updates (location, name) without file re-upload');",
+                                    "console.log('   • Coordinate validation and error handling');",
+                                    "console.log('   • Mobile-optimized for GPS-enabled devices');",
                                     "console.log('   • Resolved database schema issues');",
                                     "console.log('   • Enhanced error handling and testing');",
                                     "console.log('   • Comprehensive permission verification');",
-                                    "console.log('   • Clear role-based functionality');",
+                                    "console.log('');",
+                                    "console.log('📍 LOCATION FEATURES:');",
+                                    "console.log('   • Upload files with GPS coordinates');",
+                                    "console.log('   • Update file location without re-uploading');",
+                                    "console.log('   • Remove location data by setting to null');",
+                                    "console.log('   • Validate coordinate ranges (-90/90, -180/180)');",
+                                    "console.log('   • Partial updates - send only changed fields');",
                                     "console.log('');",
                                     "console.log('✅ Run the collection to verify all functionality!');"
                                 ]
@@ -1323,6 +1518,18 @@
             "value": "",
             "type": "string",
             "description": "Automatically populated with user email for removal testing"
+        },
+        {
+            "key": "uploaded_file_id",
+            "value": "",
+            "type": "string",
+            "description": "Automatically populated with uploaded file ID for location testing"
+        },
+        {
+            "key": "file_without_location_id",
+            "value": "",
+            "type": "string",
+            "description": "Automatically populated with file ID for files without location data"
         }
     ]
 }

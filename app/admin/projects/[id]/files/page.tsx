@@ -27,6 +27,8 @@ interface ProjectFile {
     filename: string;
     file_size: number;
     file_url: string;
+    latitude?: number | null;
+    longitude?: number | null;
     created_at: string;
     uploaded_by: {
         id: string;
@@ -49,6 +51,9 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
     const [showUpload, setShowUpload] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [description, setDescription] = useState('');
+    const [latitude, setLatitude] = useState('');
+    const [longitude, setLongitude] = useState('');
+    const [gettingLocation, setGettingLocation] = useState(false);
     const [projectId, setProjectId] = useState<string>('');
 
     const supabase = createClient();
@@ -132,6 +137,39 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
         }
     };
 
+    const getCurrentLocation = () => {
+        if (!navigator.geolocation) {
+            setError('Geolocation is not supported by this browser');
+            return;
+        }
+
+        setGettingLocation(true);
+        setError(null);
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setLatitude(position.coords.latitude.toFixed(6));
+                setLongitude(position.coords.longitude.toFixed(6));
+                setGettingLocation(false);
+            },
+            (error) => {
+                console.error('Geolocation error:', error);
+                setError(`Failed to get location: ${error.message}`);
+                setGettingLocation(false);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 300000 // 5 minutes
+            }
+        );
+    };
+
+    const clearLocation = () => {
+        setLatitude('');
+        setLongitude('');
+    };
+
     const uploadFile = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedFile) {
@@ -148,6 +186,10 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
             if (description) {
                 formData.append('description', description);
             }
+            if (latitude && longitude) {
+                formData.append('latitude', latitude);
+                formData.append('longitude', longitude);
+            }
 
             const response = await fetch(`/api/projects/${projectId}/files`, {
                 method: 'POST',
@@ -163,6 +205,8 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
 
             setSelectedFile(null);
             setDescription('');
+            setLatitude('');
+            setLongitude('');
             setShowUpload(false);
             fetchProjectAndFiles();
         } catch (error) {
@@ -360,6 +404,69 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     placeholder="File description"
                                 />
                             </div>
+                            
+                            {/* Location Section */}
+                            <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-sm font-medium">Location (Optional)</Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={getCurrentLocation}
+                                            disabled={gettingLocation}
+                                        >
+                                            {gettingLocation ? 'Getting Location...' : '📍 Get Current Location'}
+                                        </Button>
+                                        {(latitude || longitude) && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={clearLocation}
+                                            >
+                                                Clear
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="latitude" className="text-xs">Latitude</Label>
+                                        <Input
+                                            id="latitude"
+                                            type="number"
+                                            step="any"
+                                            min="-90"
+                                            max="90"
+                                            value={latitude}
+                                            onChange={(e) => setLatitude(e.target.value)}
+                                            placeholder="37.7749"
+                                            className="text-sm"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="longitude" className="text-xs">Longitude</Label>
+                                        <Input
+                                            id="longitude"
+                                            type="number"
+                                            step="any"
+                                            min="-180"
+                                            max="180"
+                                            value={longitude}
+                                            onChange={(e) => setLongitude(e.target.value)}
+                                            placeholder="-122.4194"
+                                            className="text-sm"
+                                        />
+                                    </div>
+                                </div>
+                                {latitude && longitude && (
+                                    <p className="text-xs text-muted-foreground">
+                                        📍 Location: {parseFloat(latitude).toFixed(4)}, {parseFloat(longitude).toFixed(4)}
+                                    </p>
+                                )}
+                            </div>
                             <div className="flex space-x-2">
                                 <Button type="submit" disabled={uploading || !selectedFile}>
                                     {uploading ? 'Uploading...' : 'Upload File'}
@@ -368,6 +475,8 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     setShowUpload(false);
                                     setSelectedFile(null);
                                     setDescription('');
+                                    setLatitude('');
+                                    setLongitude('');
                                 }}>
                                     Cancel
                                 </Button>
@@ -394,6 +503,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                         <TableRow>
                                             <TableHead>Filename</TableHead>
                                             <TableHead>Size</TableHead>
+                                            <TableHead>Location</TableHead>
                                             <TableHead>Uploaded By</TableHead>
                                             <TableHead>Uploaded</TableHead>
                                             <TableHead>Actions</TableHead>
@@ -407,6 +517,18 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                                 </TableCell>
                                                 <TableCell className="text-sm">
                                                     {formatFileSize(file.file_size)}
+                                                </TableCell>
+                                                <TableCell className="text-sm">
+                                                    {file.latitude && file.longitude ? (
+                                                        <div className="flex items-center space-x-1">
+                                                            <span className="text-xs">📍</span>
+                                                            <span title={`${file.latitude}, ${file.longitude}`}>
+                                                                {file.latitude.toFixed(4)}, {file.longitude.toFixed(4)}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-xs">No location</span>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell className="text-sm">
                                                     <div className="flex items-center space-x-1">
@@ -464,6 +586,21 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                                     <div>
                                                         <span className="text-sm text-muted-foreground">Uploaded:</span>
                                                         <div className="text-sm">{formatDate(file.created_at)}</div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Location Info */}
+                                                <div>
+                                                    <span className="text-sm text-muted-foreground">Location:</span>
+                                                    <div className="text-sm">
+                                                        {file.latitude && file.longitude ? (
+                                                            <div className="flex items-center space-x-1">
+                                                                <span>📍</span>
+                                                                <span>{file.latitude.toFixed(4)}, {file.longitude.toFixed(4)}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground">No location data</span>
+                                                        )}
                                                     </div>
                                                 </div>
 

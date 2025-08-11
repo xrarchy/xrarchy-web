@@ -68,13 +68,13 @@ export async function GET() {
                     created_at,
                     updated_at,
                     created_by,
-                    created_by_profile:created_by (
+                    created_by_profile:profiles!projects_created_by_fkey (
                         email
                     ),
                     assignments:project_assignments (
                         id,
                         assigned_user_id,
-                        assigned_user:assigned_user_id (
+                        assigned_user:profiles!project_assignments_assigned_user_id_fkey (
                             email
                         )
                     ),
@@ -99,13 +99,13 @@ export async function GET() {
                     created_at,
                     updated_at,
                     created_by,
-                    created_by_profile:created_by (
+                    created_by_profile:profiles!projects_created_by_fkey (
                         email
                     ),
                     assignments:project_assignments!inner (
                         id,
                         assigned_user_id,
-                        assigned_user:assigned_user_id (
+                        assigned_user:profiles!project_assignments_assigned_user_id_fkey (
                             email
                         )
                     ),
@@ -143,13 +143,13 @@ export async function GET() {
             created_at: project.created_at,
             updated_at: project.updated_at,
             created_by: project.created_by,
-            created_by_email: (project.created_by_profile?.[0] as Profile)?.email || 'Unknown',
+            created_by_email: (project.created_by_profile as Profile)?.email || 'Unknown',
             assignment_count: project.assignments?.length || 0,
             file_count: project.files?.length || 0,
             total_file_size: project.files?.reduce((sum: number, file) => sum + (file.file_size || 0), 0) || 0,
             assigned_users: project.assignments?.map((assignment) => ({
                 id: assignment.assigned_user_id,
-                email: (assignment.assigned_user?.[0] as Profile)?.email || 'Unknown'
+                email: (assignment.assigned_user as Profile)?.email || 'Unknown'
             })) || []
         })) || [];
 
@@ -184,11 +184,21 @@ export async function POST(request: Request) {
     console.log('📋 Admin Projects API: POST request received');
 
     try {
+        const requestBody = await request.json();
+
+        if (!requestBody || typeof requestBody !== 'object') {
+            return NextResponse.json({
+                success: false,
+                error: 'Invalid request body',
+                code: 'INVALID_REQUEST_BODY'
+            }, { status: 400 });
+        }
+
         const {
             name,
             description,
             location
-        } = await request.json();
+        } = requestBody;
 
         if (!name?.trim()) {
             return NextResponse.json({
@@ -198,25 +208,36 @@ export async function POST(request: Request) {
             }, { status: 400 });
         }
 
-        // Validate coordinates if provided
-        if (location?.latitude !== undefined || location?.longitude !== undefined) {
-            const lat = parseFloat(location.latitude);
-            const lng = parseFloat(location.longitude);
+        // Validate coordinates if location object is provided and has coordinates
+        if (location && typeof location === 'object') {
+            if (location.latitude !== undefined || location.longitude !== undefined) {
+                // If coordinates are provided, both must be valid
+                if (location.latitude !== undefined && location.longitude !== undefined) {
+                    const lat = parseFloat(location.latitude);
+                    const lng = parseFloat(location.longitude);
 
-            if (isNaN(lat) || lat < -90 || lat > 90) {
-                return NextResponse.json({
-                    success: false,
-                    error: 'Invalid latitude. Must be between -90 and 90',
-                    code: 'INVALID_LATITUDE'
-                }, { status: 400 });
-            }
+                    if (isNaN(lat) || lat < -90 || lat > 90) {
+                        return NextResponse.json({
+                            success: false,
+                            error: 'Invalid latitude. Must be between -90 and 90',
+                            code: 'INVALID_LATITUDE'
+                        }, { status: 400 });
+                    }
 
-            if (isNaN(lng) || lng < -180 || lng > 180) {
-                return NextResponse.json({
-                    success: false,
-                    error: 'Invalid longitude. Must be between -180 and 180',
-                    code: 'INVALID_LONGITUDE'
-                }, { status: 400 });
+                    if (isNaN(lng) || lng < -180 || lng > 180) {
+                        return NextResponse.json({
+                            success: false,
+                            error: 'Invalid longitude. Must be between -180 and 180',
+                            code: 'INVALID_LONGITUDE'
+                        }, { status: 400 });
+                    }
+                } else {
+                    return NextResponse.json({
+                        success: false,
+                        error: 'Both latitude and longitude must be provided if coordinates are specified',
+                        code: 'INCOMPLETE_COORDINATES'
+                    }, { status: 400 });
+                }
             }
         }
 
@@ -259,26 +280,26 @@ export async function POST(request: Request) {
             location_description?: string;
         }
 
-        // Create the project with geolocation
+        // Create the project with optional geolocation
         const projectData: ProjectData = {
             name: name.trim(),
             description: description?.trim() || null,
             created_by: userData.user.id
         };
 
-        // Add location data if provided
-        if (location) {
+        // Add location data if provided and valid
+        if (location && typeof location === 'object') {
             if (location.latitude !== undefined && location.longitude !== undefined) {
                 projectData.latitude = parseFloat(location.latitude);
                 projectData.longitude = parseFloat(location.longitude);
             }
-            if (location.name) {
+            if (location.name?.trim()) {
                 projectData.location_name = location.name.trim();
             }
-            if (location.address) {
+            if (location.address?.trim()) {
                 projectData.address = location.address.trim();
             }
-            if (location.description) {
+            if (location.description?.trim()) {
                 projectData.location_description = location.description.trim();
             }
         }

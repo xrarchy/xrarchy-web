@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
+// GET /api/mobile/projects/[id]/files/[fileId] - Get single file details
 export async function GET(
     request: Request,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
     const resolvedParams = await params;
-    console.log('📱 Mobile Project Files API: GET request received for project:', resolvedParams.id);
+    console.log('📱 Mobile Single File API: GET request received for file:', resolvedParams.fileId);
 
     try {
         const authHeader = request.headers.get('Authorization');
@@ -35,6 +36,7 @@ export async function GET(
 
         const userId = userData.user.id;
         const projectId = resolvedParams.id;
+        const fileId = resolvedParams.fileId;
 
         // Get user role
         const { data: userProfile, error: profileError } = await supabaseAdmin
@@ -69,8 +71,8 @@ export async function GET(
             }
         }
 
-        // Get project files with uploader info using separate queries for better reliability
-        const { data: files, error: filesError } = await supabaseAdmin
+        // Get file details
+        const { data: file, error: fileError } = await supabaseAdmin
             .from('files')
             .select(`
                 id,
@@ -82,82 +84,55 @@ export async function GET(
                 created_at,
                 uploaded_by
             `)
+            .eq('id', fileId)
             .eq('project_id', projectId)
-            .order('created_at', { ascending: false });
+            .single();
 
-        if (filesError) {
-            console.error('📱 Files fetch error:', filesError.message);
+        if (fileError || !file) {
             return NextResponse.json({
                 success: false,
-                error: 'Failed to fetch files',
-                code: 'FILES_FETCH_ERROR'
-            }, { status: 500 });
+                error: 'File not found in this project',
+                code: 'FILE_NOT_FOUND'
+            }, { status: 404 });
         }
 
-        // Get uploader profiles separately
-        const uploaderIds = [...new Set(files?.map(f => f.uploaded_by).filter(Boolean))];
-        const { data: profiles } = uploaderIds.length > 0
-            ? await supabaseAdmin
-                .from('profiles')
-                .select('id, email')
-                .in('id', uploaderIds)
-            : { data: [] };
+        // Get uploader profile
+        const { data: uploaderProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('email')
+            .eq('id', file.uploaded_by)
+            .single();
 
-        // Create lookup map for profiles with proper typing
-        type ProfileData = { id: string; email: string };
-        const profileMap = new Map<string, ProfileData>(
-            (profiles || []).map((p: ProfileData) => [p.id, p])
-        );
+        // Generate signed URL for the file
+        const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
+            .from('project-files')
+            .createSignedUrl(file.file_url, 3600); // URL valid for 1 hour
 
-        interface FileData {
-            id: string;
-            file_name: string;
-            file_size: number;
-            file_url: string;
-            latitude: number | null;
-            longitude: number | null;
-            created_at: string;
-            uploaded_by: string;
-        }
-
-        // Generate signed URLs for all files
-        const formattedFilesWithSignedUrls = await Promise.all(
-            (files || []).map(async (file: FileData) => {
-                // Generate signed URL for the file
-                const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
-                    .from('project-files')
-                    .createSignedUrl(file.file_url, 3600); // URL valid for 1 hour
-
-                return {
-                    id: file.id,
-                    name: file.file_name,
-                    size: file.file_size,
-                    type: 'application/octet-stream', // Default type since it's not stored
-                    url: file.file_url,
-                    signedUrl: signedUrlData?.signedUrl || null,
-                    location: file.latitude && file.longitude ? {
-                        latitude: file.latitude,
-                        longitude: file.longitude
-                    } : null,
-                    uploadedAt: file.created_at,
-                    uploadedBy: {
-                        email: profileMap.get(file.uploaded_by)?.email || 'Unknown'
-                    }
-                };
-            })
-        );
+        const formattedFile = {
+            id: file.id,
+            name: file.file_name,
+            size: file.file_size,
+            url: file.file_url,
+            signedUrl: signedUrlData?.signedUrl || null,
+            location: file.latitude && file.longitude ? {
+                latitude: file.latitude,
+                longitude: file.longitude
+            } : null,
+            uploadedAt: file.created_at,
+            uploadedBy: {
+                email: uploaderProfile?.email || 'Unknown'
+            }
+        };
 
         return NextResponse.json({
             success: true,
             data: {
-                files: formattedFilesWithSignedUrls,
-                totalCount: formattedFilesWithSignedUrls.length,
-                totalSize: formattedFilesWithSignedUrls.reduce((sum, file) => sum + (file.size || 0), 0)
+                file: formattedFile
             }
         });
 
     } catch (error) {
-        console.error('📱 Mobile Project Files API error:', error);
+        console.error('📱 Mobile Single File API error:', error);
         return NextResponse.json({
             success: false,
             error: 'Internal server error',
@@ -166,221 +141,13 @@ export async function GET(
     }
 }
 
-export async function POST(
-    request: Request,
-    { params }: { params: Promise<{ id: string }> }
-) {
-    const resolvedParams = await params;
-    console.log('📱 Mobile File Upload API: POST request received for project:', resolvedParams.id);
-
-    try {
-        const authHeader = request.headers.get('Authorization');
-
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return NextResponse.json({
-                success: false,
-                error: 'Authorization header required',
-                code: 'MISSING_AUTH_HEADER'
-            }, { status: 401 });
-        }
-
-        const token = authHeader.substring(7);
-        const supabaseAdmin = await createClient(true);
-
-        // Verify token and get user
-        const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
-
-        if (userError || !userData.user) {
-            return NextResponse.json({
-                success: false,
-                error: 'Invalid or expired token',
-                code: 'INVALID_TOKEN'
-            }, { status: 401 });
-        }
-
-        const userId = userData.user.id;
-        const projectId = resolvedParams.id;
-
-        // Get user role
-        const { data: userProfile, error: profileError } = await supabaseAdmin
-            .from('profiles')
-            .select('role')
-            .eq('id', userId)
-            .single();
-
-        if (profileError) {
-            return NextResponse.json({
-                success: false,
-                error: 'Failed to fetch user profile',
-                code: 'PROFILE_FETCH_ERROR'
-            }, { status: 500 });
-        }
-
-        // Check if user has access to this project
-        if (userProfile.role !== 'Admin') {
-            const { data: assignment } = await supabaseAdmin
-                .from('project_assignments')
-                .select('id')
-                .eq('project_id', projectId)
-                .eq('assigned_user_id', userId)
-                .single();
-
-            if (!assignment) {
-                return NextResponse.json({
-                    success: false,
-                    error: 'You do not have access to this project',
-                    code: 'PROJECT_ACCESS_DENIED'
-                }, { status: 403 });
-            }
-        }
-
-        // Parse form data
-        const formData = await request.formData();
-        const file = formData.get('file') as File;
-        const fileName = formData.get('fileName') as string;
-        const latitude = formData.get('latitude') as string;
-        const longitude = formData.get('longitude') as string;
-
-        if (!file) {
-            return NextResponse.json({
-                success: false,
-                error: 'No file provided',
-                code: 'MISSING_FILE'
-            }, { status: 400 });
-        }
-
-        // Validate and parse coordinates if provided
-        let lat = null;
-        let lng = null;
-        
-        if (latitude && longitude) {
-            lat = parseFloat(latitude);
-            lng = parseFloat(longitude);
-            
-            // Basic validation for valid coordinate ranges
-            if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-                return NextResponse.json({
-                    success: false,
-                    error: 'Invalid coordinates. Latitude must be between -90 and 90, longitude between -180 and 180',
-                    code: 'INVALID_COORDINATES'
-                }, { status: 400 });
-            }
-        }
-
-        // Generate unique file name
-        const timestamp = Date.now();
-        // Prioritize the actual file name over custom fileName parameter
-        const originalName = file.name || fileName || 'unnamed_file';
-        const sanitizedFilename = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const uniqueFilename = `${timestamp}_${sanitizedFilename}`;
-        const filePath = `projects/${projectId}/${uniqueFilename}`;
-
-        // Upload to Supabase Storage
-        const { error: uploadError } = await supabaseAdmin.storage
-            .from('project-files')
-            .upload(filePath, await file.arrayBuffer(), {
-                contentType: file.type,
-                duplex: 'half'
-            });
-
-        if (uploadError) {
-            console.error('📱 File upload error:', uploadError.message);
-            return NextResponse.json({
-                success: false,
-                error: 'Failed to upload file',
-                code: 'UPLOAD_ERROR'
-            }, { status: 500 });
-        }
-
-        // Get project name for the files table
-        const { data: project } = await supabaseAdmin
-            .from('projects')
-            .select('name')
-            .eq('id', projectId)
-            .single();
-
-        // Save file record to database
-        const { data: fileRecord, error: dbError } = await supabaseAdmin
-            .from('files')
-            .insert({
-                project_id: projectId,
-                project_name: project?.name || 'Unknown Project',
-                file_name: originalName,
-                file_size: file.size,
-                file_url: filePath,
-                latitude: lat,
-                longitude: lng,
-                uploaded_by: userId,
-                created_at: new Date().toISOString()
-            })
-            .select(`
-                id,
-                file_name,
-                file_size,
-                file_url,
-                latitude,
-                longitude,
-                created_at
-            `)
-            .single();
-
-        if (dbError) {
-            console.error('📱 File record creation error:', dbError.message);
-
-            // Try to clean up uploaded file
-            await supabaseAdmin.storage
-                .from('project-files')
-                .remove([filePath]);
-
-            return NextResponse.json({
-                success: false,
-                error: 'Failed to save file record',
-                code: 'DATABASE_ERROR'
-            }, { status: 500 });
-        }
-
-        // Generate signed URL for the uploaded file
-        const { data: signedUrlData, error: signedUrlError } = await supabaseAdmin.storage
-            .from('project-files')
-            .createSignedUrl(fileRecord.file_url, 3600); // URL valid for 1 hour
-
-        return NextResponse.json({
-            success: true,
-            message: 'File uploaded successfully',
-            data: {
-                file: {
-                    id: fileRecord.id,
-                    name: fileRecord.file_name,
-                    size: fileRecord.file_size,
-                    type: file.type,
-                    url: fileRecord.file_url,
-                    signedUrl: signedUrlData?.signedUrl || null,
-                    location: fileRecord.latitude && fileRecord.longitude ? {
-                        latitude: fileRecord.latitude,
-                        longitude: fileRecord.longitude
-                    } : null,
-                    uploadedAt: fileRecord.created_at
-                }
-            }
-        }, { status: 201 });
-
-    } catch (error) {
-        console.error('📱 Mobile File Upload API error:', error);
-        return NextResponse.json({
-            success: false,
-            error: 'Internal server error',
-            code: 'SERVER_ERROR'
-        }, { status: 500 });
-    }
-}
-
-// PUT /api/mobile/projects/[id]/files - Update file metadata (partial update)
+// PUT /api/mobile/projects/[id]/files/[fileId] - Update file metadata (partial update)
 export async function PUT(
     request: Request,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
     const resolvedParams = await params;
-    console.log('📱 Mobile File Update API: PUT request received for project:', resolvedParams.id);
+    console.log('📱 Mobile File Update API: PUT request received for file:', resolvedParams.fileId);
 
     try {
         const authHeader = request.headers.get('Authorization');
@@ -409,18 +176,11 @@ export async function PUT(
 
         const userId = userData.user.id;
         const projectId = resolvedParams.id;
+        const fileId = resolvedParams.fileId;
         const body = await request.json();
 
         // Extract update fields from request body
-        const { fileId, latitude, longitude, file_name } = body;
-
-        if (!fileId) {
-            return NextResponse.json({
-                success: false,
-                error: 'File ID is required',
-                code: 'MISSING_FILE_ID'
-            }, { status: 400 });
-        }
+        const { latitude, longitude, file_name } = body;
 
         // Get user role and check permissions
         const { data: userProfile, error: profileError } = await supabaseAdmin
@@ -490,8 +250,10 @@ export async function PUT(
         } = {};
         
         // Validate and update coordinates if provided
-        if (latitude !== undefined || longitude !== undefined) {
-            if (latitude !== undefined) {
+        if (latitude !== undefined) {
+            if (latitude === null) {
+                updateFields.latitude = null;
+            } else {
                 const lat = parseFloat(latitude);
                 if (isNaN(lat) || lat < -90 || lat > 90) {
                     return NextResponse.json({
@@ -502,8 +264,12 @@ export async function PUT(
                 }
                 updateFields.latitude = lat;
             }
+        }
 
-            if (longitude !== undefined) {
+        if (longitude !== undefined) {
+            if (longitude === null) {
+                updateFields.longitude = null;
+            } else {
                 const lng = parseFloat(longitude);
                 if (isNaN(lng) || lng < -180 || lng > 180) {
                     return NextResponse.json({
@@ -517,7 +283,14 @@ export async function PUT(
         }
 
         // Update file name if provided
-        if (file_name !== undefined && file_name !== null && file_name.trim() !== '') {
+        if (file_name !== undefined) {
+            if (file_name === null || file_name.trim() === '') {
+                return NextResponse.json({
+                    success: false,
+                    error: 'File name cannot be empty',
+                    code: 'INVALID_FILE_NAME'
+                }, { status: 400 });
+            }
             updateFields.file_name = file_name.trim();
         }
 
@@ -593,13 +366,13 @@ export async function PUT(
     }
 }
 
-// DELETE /api/mobile/projects/[id]/files - Delete file
+// DELETE /api/mobile/projects/[id]/files/[fileId] - Delete file
 export async function DELETE(
     request: Request,
-    { params }: { params: Promise<{ id: string }> }
+    { params }: { params: Promise<{ id: string; fileId: string }> }
 ) {
     const resolvedParams = await params;
-    console.log('📱 Mobile File Delete API: DELETE request received for project:', resolvedParams.id);
+    console.log('📱 Mobile File Delete API: DELETE request received for file:', resolvedParams.fileId);
 
     try {
         const authHeader = request.headers.get('Authorization');
@@ -628,16 +401,7 @@ export async function DELETE(
 
         const userId = userData.user.id;
         const projectId = resolvedParams.id;
-        const body = await request.json();
-        const { fileId } = body;
-
-        if (!fileId) {
-            return NextResponse.json({
-                success: false,
-                error: 'File ID is required',
-                code: 'MISSING_FILE_ID'
-            }, { status: 400 });
-        }
+        const fileId = resolvedParams.fileId;
 
         // Get user role and check permissions
         const { data: userProfile, error: profileError } = await supabaseAdmin

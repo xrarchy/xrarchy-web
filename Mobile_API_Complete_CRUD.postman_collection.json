@@ -1,0 +1,612 @@
+{
+  "info": {
+    "name": "Archy XR Mobile API - Complete CRUD",
+    "description": "Complete mobile API collection for file management with location support",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "mobile-api-crud-collection",
+    "version": "2.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "project_id",
+      "value": "123",
+      "type": "string"
+    },
+    {
+      "key": "file_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Mobile File Management",
+      "item": [
+        {
+          "name": "1. List Project Files",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/mobile/projects/{{project_id}}/files",
+                  "host": ["{{base_url}}"],
+                  "path": ["mobile", "projects", "{{project_id}}", "files"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"files\": [\n      {\n        \"id\": \"file_123\",\n        \"name\": \"example.pdf\",\n        \"size\": 1024,\n        \"url\": \"storage_url\",\n        \"location\": {\n          \"latitude\": 40.7128,\n          \"longitude\": -74.0060\n        },\n        \"uploadedAt\": \"2024-01-01T00:00:00Z\",\n        \"uploadedBy\": {\n          \"email\": \"user@example.com\"\n        }\n      }\n    ]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "2. Upload File with Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample.pdf"
+                },
+                {
+                  "key": "latitude",
+                  "value": "40.7128",
+                  "type": "text"
+                },
+                {
+                  "key": "longitude",
+                  "value": "-74.0060",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": "sample.pdf"
+                    },
+                    {
+                      "key": "latitude",
+                      "value": "40.7128",
+                      "type": "text"
+                    },
+                    {
+                      "key": "longitude",
+                      "value": "-74.0060",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/mobile/projects/{{project_id}}/files",
+                  "host": ["{{base_url}}"],
+                  "path": ["mobile", "projects", "{{project_id}}", "files"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"File uploaded successfully\",\n  \"data\": {\n    \"file\": {\n      \"id\": \"new_file_id\",\n      \"name\": \"sample.pdf\",\n      \"size\": 1024,\n      \"url\": \"storage_url\",\n      \"location\": {\n        \"latitude\": 40.7128,\n        \"longitude\": -74.0060\n      },\n      \"uploadedAt\": \"2024-01-01T00:00:00Z\",\n      \"uploadedBy\": \"user_id\"\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "2b. Upload File without Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "sample.pdf"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Get Single File Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"data\": {\n    \"file\": {\n      \"id\": \"file_123\",\n      \"name\": \"example.pdf\",\n      \"size\": 1024,\n      \"url\": \"storage_url\",\n      \"location\": {\n        \"latitude\": 40.7128,\n        \"longitude\": -74.0060\n      },\n      \"uploadedAt\": \"2024-01-01T00:00:00Z\",\n      \"uploadedBy\": {\n        \"email\": \"user@example.com\"\n      }\n    }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "4a. Update File - Location Only",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 37.7749,\n  \"longitude\": -122.4194\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"latitude\": 37.7749,\n  \"longitude\": -122.4194\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"File updated successfully\",\n  \"data\": {\n    \"file\": {\n      \"id\": \"file_123\",\n      \"name\": \"example.pdf\",\n      \"size\": 1024,\n      \"url\": \"storage_url\",\n      \"location\": {\n        \"latitude\": 37.7749,\n        \"longitude\": -122.4194\n      },\n      \"uploadedAt\": \"2024-01-01T00:00:00Z\",\n      \"uploadedBy\": \"user_id\"\n    },\n    \"updatedFields\": [\"latitude\", \"longitude\"]\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "4b. Update File - Name Only",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_name\": \"updated_filename.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4c. Update File - Latitude Only",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 51.5074\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4d. Remove Location Data",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": null,\n  \"longitude\": null\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4e. Update Multiple Fields",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"file_name\": \"final_document.pdf\",\n  \"latitude\": 48.8566,\n  \"longitude\": 2.3522\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Delete File",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": [
+            {
+              "name": "Success Response",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"success\": true,\n  \"message\": \"File deleted successfully\",\n  \"data\": {\n    \"deletedFile\": {\n      \"id\": \"file_123\",\n      \"name\": \"deleted_file.pdf\"\n    }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error Scenarios",
+      "item": [
+        {
+          "name": "Invalid Coordinates",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 95.0,\n  \"longitude\": 200.0\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": [
+            {
+              "name": "Invalid Latitude",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"latitude\": 95.0\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"error\": \"Invalid latitude. Must be between -90 and 90\",\n  \"code\": \"INVALID_LATITUDE\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "File Not Found",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/nonexistent_file_id",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "nonexistent_file_id"]
+            }
+          },
+          "response": [
+            {
+              "name": "File Not Found Response",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/nonexistent_file_id",
+                  "host": ["{{base_url}}"],
+                  "path": ["mobile", "projects", "{{project_id}}", "files", "nonexistent_file_id"]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "body": "{\n  \"success\": false,\n  \"error\": \"File not found in this project\",\n  \"code\": \"FILE_NOT_FOUND\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "No Update Fields",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+            }
+          },
+          "response": [
+            {
+              "name": "No Update Fields Response",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/mobile/projects/{{project_id}}/files/{{file_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["mobile", "projects", "{{project_id}}", "files", "{{file_id}}"]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "body": "{\n  \"success\": false,\n  \"error\": \"No valid update fields provided\",\n  \"code\": \"NO_UPDATE_FIELDS\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
