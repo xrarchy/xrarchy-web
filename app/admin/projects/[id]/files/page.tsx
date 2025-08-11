@@ -404,7 +404,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     placeholder="File description"
                                 />
                             </div>
-                            
+
                             {/* Location Section */}
                             <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
                                 <div className="flex items-center justify-between">

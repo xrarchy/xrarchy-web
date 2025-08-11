@@ -67,6 +67,11 @@ export async function GET(
                 id,
                 name,
                 description,
+                latitude,
+                longitude,
+                location_name,
+                address,
+                location_description,
                 created_at,
                 updated_at,
                 created_by,
@@ -112,6 +117,13 @@ export async function GET(
             id: project.id,
             name: project.name,
             description: project.description,
+            location: {
+                latitude: project.latitude,
+                longitude: project.longitude,
+                name: project.location_name,
+                address: project.address,
+                description: project.location_description
+            },
             created_at: project.created_at,
             updated_at: project.updated_at,
             created_by: project.created_by,
@@ -176,7 +188,17 @@ export async function PUT(
     console.log('📋 Admin Project Update API: PUT request received for project:', resolvedParams.id);
 
     try {
-        const { name, description } = await request.json();
+        const requestBody = await request.json();
+
+        if (!requestBody || typeof requestBody !== 'object') {
+            return NextResponse.json({
+                success: false,
+                error: 'Invalid request body',
+                code: 'INVALID_REQUEST_BODY'
+            }, { status: 400 });
+        }
+
+        const { name, description, location } = requestBody;
 
         if (!name?.trim()) {
             return NextResponse.json({
@@ -184,6 +206,39 @@ export async function PUT(
                 error: 'Project name is required',
                 code: 'MISSING_PROJECT_NAME'
             }, { status: 400 });
+        }
+
+        // Validate coordinates if location object is provided and has coordinates
+        if (location && typeof location === 'object') {
+            if (location.latitude !== undefined || location.longitude !== undefined) {
+                // If coordinates are provided, both must be valid
+                if (location.latitude !== undefined && location.longitude !== undefined) {
+                    const lat = parseFloat(location.latitude);
+                    const lng = parseFloat(location.longitude);
+
+                    if (isNaN(lat) || lat < -90 || lat > 90) {
+                        return NextResponse.json({
+                            success: false,
+                            error: 'Invalid latitude. Must be between -90 and 90',
+                            code: 'INVALID_LATITUDE'
+                        }, { status: 400 });
+                    }
+
+                    if (isNaN(lng) || lng < -180 || lng > 180) {
+                        return NextResponse.json({
+                            success: false,
+                            error: 'Invalid longitude. Must be between -180 and 180',
+                            code: 'INVALID_LONGITUDE'
+                        }, { status: 400 });
+                    }
+                } else {
+                    return NextResponse.json({
+                        success: false,
+                        error: 'Both latitude and longitude must be provided if coordinates are specified',
+                        code: 'INCOMPLETE_COORDINATES'
+                    }, { status: 400 });
+                }
+            }
         }
 
         const supabase = await createClient();
@@ -259,19 +314,58 @@ export async function PUT(
             }, { status: 404 });
         }
 
+        // Prepare update data
+        interface UpdateData {
+            name: string;
+            description: string | null;
+            updated_at: string;
+            latitude?: number | null;
+            longitude?: number | null;
+            location_name?: string | null;
+            address?: string | null;
+            location_description?: string | null;
+        }
+
+        const updateData: UpdateData = {
+            name: name.trim(),
+            description: description?.trim() || null,
+            updated_at: new Date().toISOString()
+        };
+
+        // Handle location updates
+        if (location && typeof location === 'object') {
+            // Update coordinates if provided
+            if (location.latitude !== undefined && location.longitude !== undefined) {
+                updateData.latitude = parseFloat(location.latitude);
+                updateData.longitude = parseFloat(location.longitude);
+            }
+
+            // Update location text fields (can be updated independently)
+            if (location.hasOwnProperty('name')) {
+                updateData.location_name = location.name?.trim() || null;
+            }
+            if (location.hasOwnProperty('address')) {
+                updateData.address = location.address?.trim() || null;
+            }
+            if (location.hasOwnProperty('description')) {
+                updateData.location_description = location.description?.trim() || null;
+            }
+        }
+
         // Update the project
         const { data: updatedProject, error: updateError } = await supabase
             .from('projects')
-            .update({
-                name: name.trim(),
-                description: description?.trim() || null,
-                updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', projectId)
             .select(`
                 id,
                 name,
                 description,
+                latitude,
+                longitude,
+                location_name,
+                address,
+                location_description,
                 created_at,
                 updated_at,
                 created_by
@@ -291,7 +385,21 @@ export async function PUT(
             success: true,
             message: 'Project updated successfully',
             data: {
-                project: updatedProject
+                project: {
+                    id: updatedProject.id,
+                    name: updatedProject.name,
+                    description: updatedProject.description,
+                    location: {
+                        latitude: updatedProject.latitude,
+                        longitude: updatedProject.longitude,
+                        name: updatedProject.location_name,
+                        address: updatedProject.address,
+                        description: updatedProject.location_description
+                    },
+                    created_at: updatedProject.created_at,
+                    updated_at: updatedProject.updated_at,
+                    created_by: updatedProject.created_by
+                }
             }
         });
 

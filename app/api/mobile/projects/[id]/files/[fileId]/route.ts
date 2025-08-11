@@ -248,7 +248,7 @@ export async function PUT(
             longitude?: number | null;
             file_name?: string;
         } = {};
-        
+
         // Validate and update coordinates if provided
         if (latitude !== undefined) {
             if (latitude === null) {

@@ -10,9 +10,9 @@ export async function GET(
         const { id } = await context.params;
 
         if (!id) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Project ID is required' 
+                error: 'Project ID is required'
             }, { status: 400 });
         }
 
@@ -21,9 +21,9 @@ export async function GET(
         // Get current user
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError || !user) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Authentication required' 
+                error: 'Authentication required'
             }, { status: 401 });
         }
 
@@ -35,9 +35,9 @@ export async function GET(
             .single();
 
         if (profileError) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Profile not found' 
+                error: 'Profile not found'
             }, { status: 404 });
         }
 
@@ -56,9 +56,9 @@ export async function GET(
         }
 
         if (!hasAccess) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Access denied' 
+                error: 'Access denied'
             }, { status: 403 });
         }
 
@@ -78,13 +78,13 @@ export async function GET(
 
         if (error) {
             console.error('Project assignments fetch error:', error);
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: error.message 
+                error: error.message
             }, { status: 500 });
         }
 
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: true,
             data: {
                 assignments: assignments || [],
@@ -94,9 +94,9 @@ export async function GET(
 
     } catch (error) {
         console.error('Mobile project users API error:', error);
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: false,
-            error: 'Internal server error' 
+            error: 'Internal server error'
         }, { status: 500 });
     }
 }
@@ -112,16 +112,16 @@ export async function POST(
         const { userId, email } = body;
 
         if (!id) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Project ID is required' 
+                error: 'Project ID is required'
             }, { status: 400 });
         }
 
         if (!userId && !email) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Either userId or email is required' 
+                error: 'Either userId or email is required'
             }, { status: 400 });
         }
 
@@ -130,9 +130,9 @@ export async function POST(
         // Get current user
         const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
         if (authError || !currentUser) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Authentication required' 
+                error: 'Authentication required'
             }, { status: 401 });
         }
 
@@ -144,18 +144,18 @@ export async function POST(
             .single();
 
         if (profileError) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Profile not found' 
+                error: 'Profile not found'
             }, { status: 404 });
         }
 
         const canAssign = profile.role === 'Admin' || profile.role === 'Archivist';
 
         if (!canAssign) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Only Admin and Archivist can assign users' 
+                error: 'Only Admin and Archivist can assign users'
             }, { status: 403 });
         }
 
@@ -173,7 +173,7 @@ export async function POST(
         const { data: targetUser, error: userError } = await targetUserQuery.single();
 
         if (userError || !targetUser) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
                 error: email ? `User with email '${email}' not found` : 'User not found'
             }, { status: 404 });
@@ -221,9 +221,9 @@ export async function POST(
 
         if (insertError) {
             console.error('Project assignment error:', insertError);
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: insertError.message 
+                error: insertError.message
             }, { status: 500 });
         }
 
@@ -238,9 +238,9 @@ export async function POST(
 
     } catch (error) {
         console.error('Mobile project user assignment API error:', error);
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: false,
-            error: 'Internal server error' 
+            error: 'Internal server error'
         }, { status: 500 });
     }
 }
@@ -256,16 +256,16 @@ export async function DELETE(
         const { userId, email } = body;
 
         if (!id) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Project ID is required' 
+                error: 'Project ID is required'
             }, { status: 400 });
         }
 
         if (!userId && !email) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Either userId or email is required' 
+                error: 'Either userId or email is required'
             }, { status: 400 });
         }
 
@@ -274,9 +274,9 @@ export async function DELETE(
         // Get current user
         const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser();
         if (authError || !currentUser) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Authentication required' 
+                error: 'Authentication required'
             }, { status: 401 });
         }
 
@@ -288,9 +288,9 @@ export async function DELETE(
             .single();
 
         if (profileError) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Profile not found' 
+                error: 'Profile not found'
             }, { status: 404 });
         }
 
@@ -308,7 +308,7 @@ export async function DELETE(
         const { data: targetUser, error: userError } = await targetUserQuery.single();
 
         if (userError || !targetUser) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
                 error: email ? `User with email '${email}' not found` : 'User not found'
             }, { status: 404 });
@@ -317,14 +317,14 @@ export async function DELETE(
         const targetUserId = targetUser.id;
 
         // Check permissions
-        const canRemove = profile.role === 'Admin' || 
-                         profile.role === 'Archivist' || 
-                         targetUserId === currentUser.id;
+        const canRemove = profile.role === 'Admin' ||
+            profile.role === 'Archivist' ||
+            targetUserId === currentUser.id;
 
         if (!canRemove) {
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: 'Only Admin, Archivist, or the user themselves can remove assignments' 
+                error: 'Only Admin, Archivist, or the user themselves can remove assignments'
             }, { status: 403 });
         }
 
@@ -337,9 +337,9 @@ export async function DELETE(
 
         if (deleteError) {
             console.error('Project user removal error:', deleteError);
-            return NextResponse.json({ 
+            return NextResponse.json({
                 success: false,
-                error: deleteError.message 
+                error: deleteError.message
             }, { status: 500 });
         }
 
@@ -358,9 +358,9 @@ export async function DELETE(
 
     } catch (error) {
         console.error('Mobile project user removal API error:', error);
-        return NextResponse.json({ 
+        return NextResponse.json({
             success: false,
-            error: 'Internal server error' 
+            error: 'Internal server error'
         }, { status: 500 });
     }
 }

@@ -74,19 +74,19 @@ async function addLocationColumns() {
         // Add comments to document the columns
         if (!latExists || !lngExists) {
             console.log('\n📝 Adding column comments...');
-            
+
             if (!latExists) {
                 await supabase.rpc('exec_sql', {
                     sql: "COMMENT ON COLUMN public.files.latitude IS 'Latitude coordinate where the file was captured/created (optional)';"
                 });
             }
-            
+
             if (!lngExists) {
                 await supabase.rpc('exec_sql', {
                     sql: "COMMENT ON COLUMN public.files.longitude IS 'Longitude coordinate where the file was captured/created (optional)';"
                 });
             }
-            
+
             console.log('✅ Column comments added');
         }
 

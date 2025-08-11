@@ -1,430 +1,514 @@
 {
-  "info": {
-    "name": "File Location Support Testing",
-    "description": "Test collection for latitude/longitude support in file upload and retrieval APIs",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:3000"
+    "info": {
+        "name": "File Location Support Testing",
+        "description": "Test collection for latitude/longitude support in file upload and retrieval APIs",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
-    {
-      "key": "admin_token",
-      "value": "your-admin-token-here"
-    },
-    {
-      "key": "project_id",
-      "value": "ef51745f-3ba2-440f-ab73-343070c6c5af"
-    },
-    {
-      "key": "test_latitude",
-      "value": "37.7749"
-    },
-    {
-      "key": "test_longitude",
-      "value": "-122.4194"
-    }
-  ],
-  "item": [
-    {
-      "name": "Web API Tests",
-      "item": [
+    "variable": [
         {
-          "name": "Upload File with Location (Web)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "latitude",
-                  "value": "{{test_latitude}}",
-                  "type": "text"
-                },
-                {
-                  "key": "longitude",
-                  "value": "{{test_longitude}}",
-                  "type": "text"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Upload a file with GPS coordinates to a project via web API"
-          },
-          "response": []
+            "key": "base_url",
+            "value": "http://localhost:3000"
         },
         {
-          "name": "Upload File without Location (Web)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Test backward compatibility - upload without coordinates"
-          },
-          "response": []
+            "key": "admin_token",
+            "value": "your-admin-token-here"
         },
         {
-          "name": "Upload File with Invalid Coordinates (Web)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "latitude",
-                  "value": "91",
-                  "type": "text",
-                  "description": "Invalid latitude > 90"
-                },
-                {
-                  "key": "longitude",
-                  "value": "181",
-                  "type": "text",
-                  "description": "Invalid longitude > 180"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Test validation - should return 400 error for invalid coordinates"
-          },
-          "response": []
+            "key": "project_id",
+            "value": "ef51745f-3ba2-440f-ab73-343070c6c5af"
         },
         {
-          "name": "Get Project Files (Web)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Retrieve all project files with location data"
-          },
-          "response": []
+            "key": "test_latitude",
+            "value": "37.7749"
+        },
+        {
+            "key": "test_longitude",
+            "value": "-122.4194"
         }
-      ]
-    },
-    {
-      "name": "Mobile API Tests",
-      "item": [
+    ],
+    "item": [
         {
-          "name": "Upload File with Location (Mobile)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
+            "name": "Web API Tests",
+            "item": [
                 {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
+                    "name": "Upload File with Location (Web)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "latitude",
+                                    "value": "{{test_latitude}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "longitude",
+                                    "value": "{{test_longitude}}",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Upload a file with GPS coordinates to a project via web API"
+                    },
+                    "response": []
                 },
                 {
-                  "key": "latitude",
-                  "value": "{{test_latitude}}",
-                  "type": "text"
+                    "name": "Upload File without Location (Web)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Test backward compatibility - upload without coordinates"
+                    },
+                    "response": []
                 },
                 {
-                  "key": "longitude",
-                  "value": "{{test_longitude}}",
-                  "type": "text"
+                    "name": "Upload File with Invalid Coordinates (Web)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "latitude",
+                                    "value": "91",
+                                    "type": "text",
+                                    "description": "Invalid latitude > 90"
+                                },
+                                {
+                                    "key": "longitude",
+                                    "value": "181",
+                                    "type": "text",
+                                    "description": "Invalid longitude > 180"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Test validation - should return 400 error for invalid coordinates"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Project Files (Web)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Retrieve all project files with location data"
+                    },
+                    "response": []
                 }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "mobile", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Upload a file with GPS coordinates via mobile API"
-          },
-          "response": []
+            ]
         },
         {
-          "name": "Upload File without Location (Mobile)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
+            "name": "Mobile API Tests",
+            "item": [
                 {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "mobile", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Test backward compatibility - mobile upload without coordinates"
-          },
-          "response": []
-        },
-        {
-          "name": "Upload File with Invalid Coordinates (Mobile)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
+                    "name": "Upload File with Location (Mobile)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "latitude",
+                                    "value": "{{test_latitude}}",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "longitude",
+                                    "value": "{{test_longitude}}",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Upload a file with GPS coordinates via mobile API"
+                    },
+                    "response": []
                 },
                 {
-                  "key": "latitude",
-                  "value": "-91",
-                  "type": "text",
-                  "description": "Invalid latitude < -90"
+                    "name": "Upload File without Location (Mobile)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Test backward compatibility - mobile upload without coordinates"
+                    },
+                    "response": []
                 },
                 {
-                  "key": "longitude",
-                  "value": "-181",
-                  "type": "text",
-                  "description": "Invalid longitude < -180"
+                    "name": "Upload File with Invalid Coordinates (Mobile)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "latitude",
+                                    "value": "-91",
+                                    "type": "text",
+                                    "description": "Invalid latitude < -90"
+                                },
+                                {
+                                    "key": "longitude",
+                                    "value": "-181",
+                                    "type": "text",
+                                    "description": "Invalid longitude < -180"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Test mobile validation - should return 400 error for invalid coordinates"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Project Files (Mobile)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Retrieve all project files with structured location data (mobile format)"
+                    },
+                    "response": []
                 }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "mobile", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Test mobile validation - should return 400 error for invalid coordinates"
-          },
-          "response": []
+            ]
         },
         {
-          "name": "Get Project Files (Mobile)",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "mobile", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Retrieve all project files with structured location data (mobile format)"
-          },
-          "response": []
+            "name": "Location Test Cases",
+            "item": [
+                {
+                    "name": "San Francisco Coordinates",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "latitude",
+                                    "value": "37.7749",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "longitude",
+                                    "value": "-122.4194",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Test with San Francisco coordinates"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "New York Coordinates",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "latitude",
+                                    "value": "40.7128",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "longitude",
+                                    "value": "-74.0060",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Test with New York coordinates"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Sydney Coordinates (Southern Hemisphere)",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{admin_token}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": []
+                                },
+                                {
+                                    "key": "latitude",
+                                    "value": "-33.8688",
+                                    "type": "text"
+                                },
+                                {
+                                    "key": "longitude",
+                                    "value": "151.2093",
+                                    "type": "text"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+                            "host": [
+                                "{{base_url}}"
+                            ],
+                            "path": [
+                                "api",
+                                "mobile",
+                                "projects",
+                                "{{project_id}}",
+                                "files"
+                            ]
+                        },
+                        "description": "Test with Sydney coordinates (negative latitude)"
+                    },
+                    "response": []
+                }
+            ]
         }
-      ]
-    },
-    {
-      "name": "Location Test Cases",
-      "item": [
-        {
-          "name": "San Francisco Coordinates",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "latitude",
-                  "value": "37.7749",
-                  "type": "text"
-                },
-                {
-                  "key": "longitude",
-                  "value": "-122.4194",
-                  "type": "text"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "mobile", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Test with San Francisco coordinates"
-          },
-          "response": []
-        },
-        {
-          "name": "New York Coordinates",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "latitude",
-                  "value": "40.7128",
-                  "type": "text"
-                },
-                {
-                  "key": "longitude",
-                  "value": "-74.0060",
-                  "type": "text"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "mobile", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Test with New York coordinates"
-          },
-          "response": []
-        },
-        {
-          "name": "Sydney Coordinates (Southern Hemisphere)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{admin_token}}",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                {
-                  "key": "file",
-                  "type": "file",
-                  "src": []
-                },
-                {
-                  "key": "latitude",
-                  "value": "-33.8688",
-                  "type": "text"
-                },
-                {
-                  "key": "longitude",
-                  "value": "151.2093",
-                  "type": "text"
-                }
-              ]
-            },
-            "url": {
-              "raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
-              "host": ["{{base_url}}"],
-              "path": ["api", "mobile", "projects", "{{project_id}}", "files"]
-            },
-            "description": "Test with Sydney coordinates (negative latitude)"
-          },
-          "response": []
-        }
-      ]
-    }
-  ]
+    ]
 }

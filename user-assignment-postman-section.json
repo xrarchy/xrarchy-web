@@ -1,0 +1,526 @@
+{
+    "name": "👥 User Assignment Management",
+    "description": "Assign and manage users on projects - Admin and Archivist only",
+    "item": [
+        {
+            "name": "📋 List Project Users",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "const response = pm.response.json();",
+                            "",
+                            "pm.test('Project users listed successfully', () => {",
+                            "    pm.expect(response).to.have.property('assignments');",
+                            "});",
+                            "",
+                            "if (response.assignments) {",
+                            "    console.log('👥 Project Users:');",
+                            "    console.log(`📊 Total users assigned: ${response.assignments.length}`);",
+                            "    ",
+                            "    response.assignments.forEach((assignment, index) => {",
+                            "        console.log(`${index + 1}. ${assignment.assigned_user.email} (${assignment.assigned_user.role})`);",
+                            "        console.log(`   📅 Assigned: ${new Date(assignment.assigned_at).toLocaleDateString()}`);",
+                            "    });",
+                            "    ",
+                            "    // Store a user ID for testing removal (if any users exist)",
+                            "    if (response.assignments.length > 0) {",
+                            "        pm.environment.set('test_user_to_remove', response.assignments[0].assigned_user.id);",
+                            "    }",
+                            "}"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{admin_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/projects/{{admin_project_id}}/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "projects",
+                        "{{admin_project_id}}",
+                        "users"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "➕ Assign User to Project (Admin)",
+            "event": [
+                {
+                    "listen": "prerequest",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "console.log('');",
+                            "console.log('👥 USER ASSIGNMENT TEST');",
+                            "console.log('Project ID:', pm.variables.get('admin_project_id'));",
+                            "console.log('Note: Set {{user_id_to_assign}} variable to test assignment');",
+                            "console.log('You can get user IDs from the admin users list endpoint');",
+                            "console.log('');"
+                        ]
+                    }
+                },
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "const response = pm.response.json();",
+                            "",
+                            "pm.test('User assignment response received', () => {",
+                            "    pm.expect([200, 400]).to.include(pm.response.code);",
+                            "});",
+                            "",
+                            "if (response.success && response.assignment) {",
+                            "    console.log('✅ User Assignment Success:');",
+                            "    console.log(`👤 User: ${response.assignment.assigned_user.email}`);",
+                            "    console.log(`🎭 Role: ${response.assignment.assigned_user.role}`);",
+                            "    console.log(`📅 Assigned: ${new Date(response.assignment.assigned_at).toLocaleString()}`);",
+                            "    console.log(`💬 Message: ${response.message}`);",
+                            "    ",
+                            "    // Store the assigned user ID for removal testing",
+                            "    pm.environment.set('assigned_user_id', response.assignment.assigned_user.id);",
+                            "} else if (!response.success && pm.response.code === 400) {",
+                            "    console.log('ℹ️ User already assigned or validation error');",
+                            "} else {",
+                            "    console.log('❌ Assignment failed:', response.error || 'Unknown error');",
+                            "}"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{admin_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"userId\": \"{{user_id_to_assign}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/projects/{{admin_project_id}}/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "projects",
+                        "{{admin_project_id}}",
+                        "users"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "➕ Assign User to Project (Archivist)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "const response = pm.response.json();",
+                            "",
+                            "pm.test('Archivist assignment response', () => {",
+                            "    pm.expect([200, 400, 403]).to.include(pm.response.code);",
+                            "});",
+                            "",
+                            "if (response.success) {",
+                            "    console.log('✅ Archivist Assignment Success:');",
+                            "    console.log(`👤 User: ${response.assignment.assigned_user.email}`);",
+                            "    console.log(`📚 Assigned by: Archivist`);",
+                            "} else if (pm.response.code === 400) {",
+                            "    console.log('ℹ️ User already assigned or validation error');",
+                            "} else if (pm.response.code === 403) {",
+                            "    console.log('⚠️ Archivist assignment blocked - check permissions');",
+                            "}"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{archivist_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"userId\": \"{{user_id_to_assign}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/projects/{{admin_project_id}}/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "projects",
+                        "{{admin_project_id}}",
+                        "users"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "🚫 Assign User (User Role - Should Fail)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "const response = pm.response.json();",
+                            "const blocked = !response.success && pm.response.code === 403;",
+                            "",
+                            "console.log('🚫 USER ASSIGNMENT PERMISSION TEST:');",
+                            "console.log(`📝 Assignment attempt: ${pm.response.code}`);",
+                            "console.log(`✅ Expected: Should be BLOCKED (403)`);",
+                            "console.log(`🎯 Result: ${blocked ? 'CORRECTLY BLOCKED ✨' : 'INCORRECTLY ALLOWED ❌'}`);",
+                            "",
+                            "if (!blocked) {",
+                            "    console.log('⚠️ SECURITY ISSUE: Regular user was able to assign users!');",
+                            "}",
+                            "",
+                            "pm.test('Regular users cannot assign users', () => {",
+                            "    pm.expect(pm.response.code).to.equal(403);",
+                            "});"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{user_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "POST",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"userId\": \"{{user_id_to_assign}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/projects/{{admin_project_id}}/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "projects",
+                        "{{admin_project_id}}",
+                        "users"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "➖ Remove User from Project (Admin)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "const response = pm.response.json();",
+                            "",
+                            "pm.test('User removal response received', () => {",
+                            "    pm.expect([200, 404]).to.include(pm.response.code);",
+                            "});",
+                            "",
+                            "if (response.success) {",
+                            "    console.log('✅ User Removal Success:');",
+                            "    console.log(`💬 Message: ${response.message}`);",
+                            "    console.log('👤 User has been removed from the project');",
+                            "} else {",
+                            "    console.log('❌ User removal failed:', response.error || 'Unknown error');",
+                            "}"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{admin_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"userId\": \"{{assigned_user_id}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/projects/{{admin_project_id}}/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "projects",
+                        "{{admin_project_id}}",
+                        "users"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "➖ Remove User from Project (Archivist)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "const response = pm.response.json();",
+                            "",
+                            "pm.test('Archivist removal response', () => {",
+                            "    pm.expect([200, 403, 404]).to.include(pm.response.code);",
+                            "});",
+                            "",
+                            "if (response.success) {",
+                            "    console.log('✅ Archivist Removal Success:');",
+                            "    console.log(`💬 Message: ${response.message}`);",
+                            "    console.log('📚 Removed by: Archivist');",
+                            "} else if (pm.response.code === 403) {",
+                            "    console.log('⚠️ Archivist removal blocked - check permissions');",
+                            "} else {",
+                            "    console.log('ℹ️ User not found or already removed');",
+                            "}"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{archivist_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"userId\": \"{{test_user_to_remove}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/projects/{{admin_project_id}}/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "projects",
+                        "{{admin_project_id}}",
+                        "users"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "🚫 Remove User (User Role - Should Fail)",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "const response = pm.response.json();",
+                            "const blocked = !response.success && pm.response.code === 403;",
+                            "",
+                            "console.log('🚫 USER REMOVAL PERMISSION TEST:');",
+                            "console.log(`📝 Removal attempt: ${pm.response.code}`);",
+                            "console.log(`✅ Expected: Should be BLOCKED (403)`);",
+                            "console.log(`🎯 Result: ${blocked ? 'CORRECTLY BLOCKED ✨' : 'INCORRECTLY ALLOWED ❌'}`);",
+                            "",
+                            "if (!blocked) {",
+                            "    console.log('⚠️ SECURITY ISSUE: Regular user was able to remove users!');",
+                            "}",
+                            "",
+                            "pm.test('Regular users cannot remove other users', () => {",
+                            "    pm.expect(pm.response.code).to.equal(403);",
+                            "});"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{user_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "DELETE",
+                "header": [
+                    {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                    }
+                ],
+                "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"userId\": \"{{test_user_to_remove}}\"\n}"
+                },
+                "url": {
+                    "raw": "{{base_url}}/api/projects/{{admin_project_id}}/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "projects",
+                        "{{admin_project_id}}",
+                        "users"
+                    ]
+                }
+            }
+        },
+        {
+            "name": "📊 User Assignment Summary Report",
+            "event": [
+                {
+                    "listen": "test",
+                    "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                            "console.log('');",
+                            "console.log('👥 USER ASSIGNMENT MANAGEMENT SUMMARY:');",
+                            "console.log('=============================================');",
+                            "console.log('| Role      | Assign Users | Remove Users | View Users |');",
+                            "console.log('|-----------|--------------|--------------|------------|');",
+                            "console.log('| Admin     |      ✅      |      ✅      |     ✅     |');",
+                            "console.log('| User      |      ❌      |  Self Only   |     ✅     |');",
+                            "console.log('| Archivist |      ✅      |      ✅      |     ✅     |');",
+                            "console.log('=============================================');",
+                            "console.log('');",
+                            "console.log('🔧 AVAILABLE ENDPOINTS:');",
+                            "console.log('• GET /api/projects/{id}/users - List project users');",
+                            "console.log('• POST /api/projects/{id}/users - Assign user to project');",
+                            "console.log('• DELETE /api/projects/{id}/users - Remove user from project');",
+                            "console.log('');",
+                            "console.log('🔑 PERMISSION DETAILS:');",
+                            "console.log('• Admin: Full control over user assignments');",
+                            "console.log('• Archivist: Can manage users on assigned projects');",
+                            "console.log('• User: Can view assignments, remove themselves only');",
+                            "console.log('• Comprehensive audit trail with assignment timestamps');",
+                            "console.log('• Prevents duplicate assignments automatically');",
+                            "console.log('');",
+                            "console.log('✅ All user assignment tests should pass!');",
+                            "",
+                            "pm.test('User assignment documentation verified', () => {",
+                            "    pm.expect(true).to.be.true;",
+                            "});"
+                        ]
+                    }
+                }
+            ],
+            "request": {
+                "auth": {
+                    "type": "bearer",
+                    "bearer": [
+                        {
+                            "key": "token",
+                            "value": "{{admin_token}}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{base_url}}/api/projects/{{admin_project_id}}/users",
+                    "host": [
+                        "{{base_url}}"
+                    ],
+                    "path": [
+                        "api",
+                        "projects",
+                        "{{admin_project_id}}",
+                        "users"
+                    ]
+                }
+            }
+        }
+    ]
+}

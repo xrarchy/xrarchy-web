@@ -19,7 +19,7 @@ async function testAdminProjects() {
         }
 
         const data = await response.json();
-        
+
         console.log('✅ Admin Projects API Response:');
         console.log('Total Projects:', data.data?.total_count || 0);
         console.log('User Role:', data.data?.user_role);
@@ -37,7 +37,7 @@ async function testAdminProjects() {
 
             // Check if any projects still show "Unknown" for created_by_email
             const unknownCreators = data.data.projects.filter(p => p.created_by_email === 'Unknown');
-            
+
             if (unknownCreators.length === 0) {
                 console.log('\n✅ SUCCESS: All projects now show creator information!');
             } else {

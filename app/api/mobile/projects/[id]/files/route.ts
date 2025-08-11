@@ -252,11 +252,11 @@ export async function POST(
         // Validate and parse coordinates if provided
         let lat = null;
         let lng = null;
-        
+
         if (latitude && longitude) {
             lat = parseFloat(latitude);
             lng = parseFloat(longitude);
-            
+
             // Basic validation for valid coordinate ranges
             if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
                 return NextResponse.json({
@@ -488,7 +488,7 @@ export async function PUT(
             longitude?: number | null;
             file_name?: string;
         } = {};
-        
+
         // Validate and update coordinates if provided
         if (latitude !== undefined || longitude !== undefined) {
             if (latitude !== undefined) {

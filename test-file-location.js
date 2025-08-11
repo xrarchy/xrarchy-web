@@ -18,11 +18,11 @@ async function testFileLocationAPI() {
             const filesData = await getResponse.json();
             console.log('✅ Files API response received');
             console.log(`   📁 Total files: ${filesData.projectFiles?.length || 0}`);
-            
+
             if (filesData.projectFiles?.length > 0) {
                 const filesWithLocation = filesData.projectFiles.filter(f => f.latitude && f.longitude);
                 console.log(`   📍 Files with location: ${filesWithLocation.length}`);
-                
+
                 if (filesWithLocation.length > 0) {
                     console.log('   📋 Sample file with location:');
                     const sample = filesWithLocation[0];
@@ -46,11 +46,11 @@ async function testFileLocationAPI() {
             const mobileData = await mobileResponse.json();
             console.log('✅ Mobile API response received');
             console.log(`   📁 Total files: ${mobileData.data?.files?.length || 0}`);
-            
+
             if (mobileData.data?.files?.length > 0) {
                 const filesWithLocation = mobileData.data.files.filter(f => f.location);
                 console.log(`   📍 Files with location: ${filesWithLocation.length}`);
-                
+
                 if (filesWithLocation.length > 0) {
                     console.log('   📋 Sample mobile file with location:');
                     const sample = filesWithLocation[0];

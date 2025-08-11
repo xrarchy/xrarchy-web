@@ -403,21 +403,21 @@ export async function POST(
         const file = formData.get('file') as File;
         const latitude = formData.get('latitude') as string;
         const longitude = formData.get('longitude') as string;
-        
+
         if (!file) return NextResponse.json({ error: 'File is required' }, { status: 400 });
 
         // Validate coordinates if provided
         let lat = null;
         let lng = null;
-        
+
         if (latitude && longitude) {
             lat = parseFloat(latitude);
             lng = parseFloat(longitude);
-            
+
             // Basic validation for valid coordinate ranges
             if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-                return NextResponse.json({ 
-                    error: 'Invalid coordinates. Latitude must be between -90 and 90, longitude between -180 and 180' 
+                return NextResponse.json({
+                    error: 'Invalid coordinates. Latitude must be between -90 and 90, longitude between -180 and 180'
                 }, { status: 400 });
             }
         }

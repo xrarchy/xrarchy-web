@@ -8,16 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     ArrowLeft,
     AlertCircle,
     Users,
     Files,
-    Archive,
-    Upload,
-    Download
+    Archive
 } from 'lucide-react';
 
 interface ProjectAssignment {
@@ -32,18 +28,6 @@ interface ProjectAssignment {
     };
 }
 
-interface ProjectFile {
-    id: string;
-    name: string;
-    url: string;
-    size: number;
-    created_at: string;
-    uploaded_by_user: {
-        email: string;
-    };
-    file_url?: string; // Add this for consistency with the files API
-}
-
 interface Project {
     id: string;
     name: string;
@@ -54,7 +38,10 @@ interface Project {
         email: string;
     };
     assignments: ProjectAssignment[];
-    files: ProjectFile[];
+    files: Array<{
+        id: string;
+        name: string;
+    }>;
 }
 
 export default function ArchivistProjectDetail({ params }: { params: Promise<{ projectId: string }> }) {
@@ -62,8 +49,6 @@ export default function ArchivistProjectDetail({ params }: { params: Promise<{ p
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [projectId, setProjectId] = useState<string>('');
-    const [showFileUpload, setShowFileUpload] = useState(false);
-    const [uploadFile, setUploadFile] = useState<File | null>(null);
 
     const supabase = createClient();
     const router = useRouter();
@@ -127,104 +112,6 @@ export default function ArchivistProjectDetail({ params }: { params: Promise<{ p
         fetchProject();
     }, [fetchProject]);
 
-
-
-    const handleFileUpload = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!uploadFile) return;
-
-        try {
-            const formData = new FormData();
-            formData.append('file', uploadFile);
-
-            const response = await fetch(`/api/projects/${projectId}/files`, {
-                method: 'POST',
-                body: formData,
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setError(data.error || 'Failed to upload file');
-                return;
-            }
-
-            setShowFileUpload(false);
-            setUploadFile(null);
-            fetchProject();
-        } catch (error) {
-            console.error('File upload error:', error);
-            setError('Failed to upload file');
-        }
-    };
-
-    const downloadFile = async (file: ProjectFile) => {
-        try {
-            console.log('Download attempt for file:', file);
-            const fileUrl = file.file_url || file.url; // Use file_url if available, fallback to url
-            console.log('File URL:', fileUrl);
-
-            const { data, error } = await supabase.storage
-                .from('project-files')
-                .createSignedUrl(fileUrl, 3600);
-
-            console.log('Signed URL response:', { data, error });
-
-            if (error) {
-                console.error('Signed URL error:', error);
-                setError(`Failed to generate download link: ${error.message}`);
-                return;
-            }
-
-            if (data?.signedUrl) {
-                console.log('Signed URL created:', data.signedUrl);
-
-                try {
-                    // Use fetch to get the file data and trigger download
-                    const response = await fetch(data.signedUrl);
-                    console.log('Fetch response status:', response.status, response.statusText);
-
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
-                    }
-
-                    const blob = await response.blob();
-                    console.log('Blob created:', blob.type, blob.size);
-
-                    const url = window.URL.createObjectURL(blob);
-
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = file.name;
-                    link.style.display = 'none';
-                    document.body.appendChild(link);
-
-                    console.log('Triggering download for:', file.name);
-                    link.click();
-
-                    // Clean up
-                    setTimeout(() => {
-                        document.body.removeChild(link);
-                        window.URL.revokeObjectURL(url);
-                        console.log('Download cleanup completed');
-                    }, 100);
-
-                } catch (fetchError) {
-                    console.error('Fetch/download error:', fetchError);
-                    // Fallback: open in new tab if fetch fails
-                    console.log('Falling back to direct URL approach');
-                    window.open(data.signedUrl, '_blank');
-                }
-            } else {
-                console.error('No signed URL returned');
-                setError('Failed to generate download link');
-            }
-        } catch (error) {
-            console.error('Download error:', error);
-            setError(`Failed to download file: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
-    };
-
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -233,14 +120,6 @@ export default function ArchivistProjectDetail({ params }: { params: Promise<{ p
             hour: '2-digit',
             minute: '2-digit'
         });
-    };
-
-    const formatFileSize = (bytes: number) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     };
 
     if (loading) {
@@ -292,11 +171,11 @@ export default function ArchivistProjectDetail({ params }: { params: Promise<{ p
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3">
                     <Button
-                        onClick={() => setShowFileUpload(!showFileUpload)}
+                        onClick={() => router.push(`/archivist/projects/${projectId}/files`)}
                         className="w-full sm:w-auto"
                     >
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload File
+                        <Files className="h-4 w-4 mr-2" />
+                        Manage Files
                     </Button>
                 </div>
             </div>
@@ -306,40 +185,6 @@ export default function ArchivistProjectDetail({ params }: { params: Promise<{ p
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
-            )}
-
-
-
-            {showFileUpload && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Upload File</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleFileUpload} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="file">Select File</Label>
-                                <Input
-                                    id="file"
-                                    type="file"
-                                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-                                    required
-                                />
-                            </div>
-                            <div className="flex flex-col sm:flex-row gap-2">
-                                <Button type="submit" className="w-full sm:w-auto">Upload File</Button>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setShowFileUpload(false)}
-                                    className="w-full sm:w-auto"
-                                >
-                                    Cancel
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
             )}
 
             {/* Project Stats */}
@@ -402,55 +247,6 @@ export default function ArchivistProjectDetail({ params }: { params: Promise<{ p
                         <div className="text-center py-8 text-muted-foreground">
                             <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                             <p>No team members assigned yet</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Project Files */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Project Files</CardTitle>
-                    <CardDescription>Files uploaded to this project</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {project.files && project.files.length > 0 ? (
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Size</TableHead>
-                                        <TableHead>Uploaded</TableHead>
-                                        <TableHead>Uploaded By</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {project.files.map((file) => (
-                                        <TableRow key={file.id}>
-                                            <TableCell className="font-medium">{file.name}</TableCell>
-                                            <TableCell>{formatFileSize(file.size)}</TableCell>
-                                            <TableCell className="text-sm">{formatDate(file.created_at)}</TableCell>
-                                            <TableCell className="text-sm">{file.uploaded_by_user.email}</TableCell>
-                                            <TableCell>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => downloadFile(file)}
-                                                >
-                                                    <Download className="h-3 w-3" />
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-muted-foreground">
-                            <Files className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>No files uploaded yet</p>
                         </div>
                     )}
                 </CardContent>
