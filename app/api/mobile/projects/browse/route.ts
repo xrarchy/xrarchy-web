@@ -107,13 +107,20 @@ export async function GET(request: Request) {
 
         const assignedProjectIds = new Set(userAssignments?.map(a => a.project_id) || []);
 
-        // Get stats for each project
+        // Get stats and assigned users for each project
         const projectsWithDetails = await Promise.all(
             (projects || []).map(async (project) => {
-                // Get assignment count
-                const { count: assignmentCount } = await supabaseAdmin
+                // Get assignment count and assigned users data
+                const { data: assignments, count: assignmentCount } = await supabaseAdmin
                     .from('project_assignments')
-                    .select('*', { count: 'exact', head: true })
+                    .select(`
+                        assigned_user_id,
+                        assigned_at,
+                        profiles:assigned_user_id (
+                            email,
+                            role
+                        )
+                    `, { count: 'exact' })
                     .eq('project_id', project.id);
 
                 // Get file count
@@ -121,6 +128,21 @@ export async function GET(request: Request) {
                     .from('files')
                     .select('*', { count: 'exact', head: true })
                     .eq('project_id', project.id);
+
+                // Format assigned users data
+                const assignedUsers = (assignments || []).map(assignment => {
+                    // Handle case where profiles might be an array or single object
+                    const profile = Array.isArray(assignment.profiles) 
+                        ? assignment.profiles[0] 
+                        : assignment.profiles;
+                    
+                    return {
+                        userId: assignment.assigned_user_id,
+                        email: profile?.email || 'Unknown',
+                        role: profile?.role || 'Unknown',
+                        assignedAt: assignment.assigned_at
+                    };
+                });
 
                 return {
                     id: project.id,
@@ -144,6 +166,7 @@ export async function GET(request: Request) {
                     canAccess: userProfile.role === 'Admin' ||
                         userProfile.role === 'User' ||
                         (userProfile.role === 'Archivist' && assignedProjectIds.has(project.id)),
+                    assignedUsers: assignedUsers,
                     stats: {
                         assignmentCount: assignmentCount || 0,
                         fileCount: fileCount || 0
