@@ -346,6 +346,7 @@ export async function GET(
                 filename:file_name,
                 file_size,
                 file_url,
+                thumbnail_url,
                 latitude,
                 longitude,
                 created_at,
@@ -362,7 +363,32 @@ export async function GET(
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ projectFiles: projectFiles || [] });
+        // Generate signed URLs for files and thumbnails
+        const filesWithSignedUrls = await Promise.all(
+            (projectFiles || []).map(async (file) => {
+                // Generate signed URL for the main file
+                const { data: signedUrlData } = await supabase.storage
+                    .from('project-files')
+                    .createSignedUrl(file.file_url, 3600);
+
+                // Generate signed URL for thumbnail if it exists
+                let thumbnailSignedUrl = null;
+                if (file.thumbnail_url) {
+                    const { data: thumbnailSignedData } = await supabase.storage
+                        .from('project-files')
+                        .createSignedUrl(file.thumbnail_url, 3600);
+                    thumbnailSignedUrl = thumbnailSignedData?.signedUrl || null;
+                }
+
+                return {
+                    ...file,
+                    signedUrl: signedUrlData?.signedUrl || null,
+                    thumbnailSignedUrl
+                };
+            })
+        );
+
+        return NextResponse.json({ projectFiles: filesWithSignedUrls });
 
     } catch (error) {
         console.error('Project files API error:', error);
@@ -401,6 +427,7 @@ export async function POST(
 
         const formData = await request.formData();
         const file = formData.get('file') as File;
+        const thumbnail = formData.get('thumbnail') as File;
         const latitude = formData.get('latitude') as string;
         const longitude = formData.get('longitude') as string;
 
@@ -440,6 +467,34 @@ export async function POST(
             return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
         }
 
+        // Upload thumbnail if provided
+        let thumbnailUrl = null;
+        if (thumbnail) {
+            // Validate thumbnail is an image
+            if (!thumbnail.type.startsWith('image/')) {
+                await supabase.storage.from('project-files').remove([filePath]);
+                return NextResponse.json({ error: 'Thumbnail must be an image file' }, { status: 400 });
+            }
+
+            const thumbnailFilename = `thumb_${uniqueFilename}`;
+            const thumbnailPath = `projects/${id}/thumbnails/${thumbnailFilename}`;
+
+            const { error: thumbnailUploadError } = await supabase.storage
+                .from('project-files')
+                .upload(thumbnailPath, await thumbnail.arrayBuffer(), {
+                    contentType: thumbnail.type,
+                    duplex: 'half'
+                });
+
+            if (thumbnailUploadError) {
+                console.error('Thumbnail upload error:', thumbnailUploadError);
+                await supabase.storage.from('project-files').remove([filePath]);
+                return NextResponse.json({ error: 'Failed to upload thumbnail' }, { status: 500 });
+            }
+
+            thumbnailUrl = thumbnailPath;
+        }
+
         // Get project name for the files table
         const { data: project } = await supabase
             .from('projects')
@@ -456,6 +511,7 @@ export async function POST(
                 file_name: file.name,
                 file_size: file.size,
                 file_url: filePath,
+                thumbnail_url: thumbnailUrl,
                 latitude: lat,
                 longitude: lng,
                 uploaded_by: user.id, // must match auth.uid()
@@ -479,6 +535,9 @@ export async function POST(
         if (dbError) {
             console.error('File metadata save error:', dbError);
             await supabase.storage.from('project-files').remove([filePath]);
+            if (thumbnailUrl) {
+                await supabase.storage.from('project-files').remove([thumbnailUrl]);
+            }
             return NextResponse.json({ error: 'Failed to save file metadata' }, { status: 500 });
         }
 
@@ -522,7 +581,7 @@ export async function DELETE(
         // Get file details
         const { data: fileRecord, error: fileError } = await supabase
             .from('files')
-            .select('file_url, uploaded_by')
+            .select('file_url, thumbnail_url, uploaded_by')
             .eq('id', fileId)
             .eq('project_id', id)
             .single();
@@ -554,9 +613,14 @@ export async function DELETE(
         }
 
         // Delete file from storage
+        const filesToDelete = [fileRecord.file_url];
+        if (fileRecord.thumbnail_url) {
+            filesToDelete.push(fileRecord.thumbnail_url);
+        }
+
         const { error: storageError } = await supabase.storage
             .from('project-files')
-            .remove([fileRecord.file_url]);
+            .remove(filesToDelete);
 
         if (storageError) {
             console.error('File storage deletion error:', storageError);

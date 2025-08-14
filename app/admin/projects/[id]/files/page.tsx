@@ -27,6 +27,7 @@ interface ProjectFile {
     filename: string;
     file_size: number;
     file_url: string;
+    thumbnail_url?: string | null;
     latitude?: number | null;
     longitude?: number | null;
     created_at: string;
@@ -50,6 +51,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
     const [uploading, setUploading] = useState(false);
     const [showUpload, setShowUpload] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedThumbnail, setSelectedThumbnail] = useState<File | null>(null);
     const [description, setDescription] = useState('');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
@@ -117,6 +119,26 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
 
             setFiles(filesData.projectFiles);
             setError(null);
+
+            // Generate signed URLs for thumbnails
+            if (filesData.projectFiles && filesData.projectFiles.length > 0) {
+                const updatedFiles = await Promise.all(
+                    filesData.projectFiles.map(async (file: ProjectFile) => {
+                        if (file.thumbnail_url) {
+                            const { data } = await supabase.storage
+                                .from('project-files')
+                                .createSignedUrl(file.thumbnail_url, 3600);
+
+                            return {
+                                ...file,
+                                thumbnail_url: data?.signedUrl || file.thumbnail_url
+                            };
+                        }
+                        return file;
+                    })
+                );
+                setFiles(updatedFiles);
+            }
         } catch (error) {
             console.error('Fetch error:', error);
             setError('Failed to load project files');
@@ -133,6 +155,19 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
         const file = e.target.files?.[0];
         if (file) {
             setSelectedFile(file);
+            setError(null);
+        }
+    };
+
+    const handleThumbnailSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Validate that it's an image file
+            if (!file.type.startsWith('image/')) {
+                setError('Thumbnail must be an image file');
+                return;
+            }
+            setSelectedThumbnail(file);
             setError(null);
         }
     };
@@ -183,6 +218,9 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
         try {
             const formData = new FormData();
             formData.append('file', selectedFile);
+            if (selectedThumbnail) {
+                formData.append('thumbnail', selectedThumbnail);
+            }
             if (description) {
                 formData.append('description', description);
             }
@@ -204,6 +242,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
             }
 
             setSelectedFile(null);
+            setSelectedThumbnail(null);
             setDescription('');
             setLatitude('');
             setLongitude('');
@@ -394,6 +433,22 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     </p>
                                 )}
                             </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="thumbnail">Thumbnail Image (Optional)</Label>
+                                <Input
+                                    id="thumbnail"
+                                    type="file"
+                                    onChange={handleThumbnailSelect}
+                                    accept="image/*"
+                                />
+                                {selectedThumbnail && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Thumbnail: {selectedThumbnail.name} ({formatFileSize(selectedThumbnail.size)})
+                                    </p>
+                                )}
+                            </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="description">Description (Optional)</Label>
                                 <Input
@@ -474,6 +529,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                 <Button type="button" variant="outline" onClick={() => {
                                     setShowUpload(false);
                                     setSelectedFile(null);
+                                    setSelectedThumbnail(null);
                                     setDescription('');
                                     setLatitude('');
                                     setLongitude('');
@@ -501,6 +557,7 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead>Thumbnail</TableHead>
                                             <TableHead>Filename</TableHead>
                                             <TableHead>Size</TableHead>
                                             <TableHead>Location</TableHead>
@@ -512,6 +569,19 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     <TableBody>
                                         {files.map((file) => (
                                             <TableRow key={file.id}>
+                                                <TableCell>
+                                                    {file.thumbnail_url ? (
+                                                        <img
+                                                            src={file.thumbnail_url}
+                                                            alt="Thumbnail"
+                                                            className="w-12 h-12 object-cover rounded"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+                                                            <FilesIcon className="h-5 w-5 text-gray-400" />
+                                                        </div>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell className="font-medium">
                                                     {file.filename}
                                                 </TableCell>
@@ -573,9 +643,23 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     <Card key={file.id} className="border">
                                         <CardContent className="p-4">
                                             <div className="space-y-3">
-                                                <div>
-                                                    <span className="text-sm text-muted-foreground">Filename:</span>
-                                                    <div className="font-medium break-words">{file.filename}</div>
+                                                {/* Thumbnail and Filename Row */}
+                                                <div className="flex items-center space-x-3">
+                                                    {file.thumbnail_url ? (
+                                                        <img
+                                                            src={file.thumbnail_url}
+                                                            alt="Thumbnail"
+                                                            className="w-16 h-16 object-cover rounded"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-16 h-16 bg-gray-100 rounded flex items-center justify-center">
+                                                            <FilesIcon className="h-6 w-6 text-gray-400" />
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1">
+                                                        <span className="text-sm text-muted-foreground">Filename:</span>
+                                                        <div className="font-medium break-words">{file.filename}</div>
+                                                    </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-4">

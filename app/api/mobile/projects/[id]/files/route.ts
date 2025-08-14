@@ -77,6 +77,7 @@ export async function GET(
                 file_name,
                 file_size,
                 file_url,
+                thumbnail_url,
                 latitude,
                 longitude,
                 created_at,
@@ -114,6 +115,7 @@ export async function GET(
             file_name: string;
             file_size: number;
             file_url: string;
+            thumbnail_url: string | null;
             latitude: number | null;
             longitude: number | null;
             created_at: string;
@@ -128,6 +130,15 @@ export async function GET(
                     .from('project-files')
                     .createSignedUrl(file.file_url, 3600); // URL valid for 1 hour
 
+                // Generate signed URL for the thumbnail if it exists
+                let thumbnailSignedUrl = null;
+                if (file.thumbnail_url) {
+                    const { data: thumbnailSignedData } = await supabaseAdmin.storage
+                        .from('project-files')
+                        .createSignedUrl(file.thumbnail_url, 3600);
+                    thumbnailSignedUrl = thumbnailSignedData?.signedUrl || null;
+                }
+
                 return {
                     id: file.id,
                     name: file.file_name,
@@ -135,6 +146,8 @@ export async function GET(
                     type: 'application/octet-stream', // Default type since it's not stored
                     url: file.file_url,
                     signedUrl: signedUrlData?.signedUrl || null,
+                    thumbnailUrl: file.thumbnail_url,
+                    thumbnailSignedUrl,
                     location: file.latitude && file.longitude ? {
                         latitude: file.latitude,
                         longitude: file.longitude
@@ -237,6 +250,7 @@ export async function POST(
         // Parse form data
         const formData = await request.formData();
         const file = formData.get('file') as File;
+        const thumbnail = formData.get('thumbnail') as File;
         const fileName = formData.get('fileName') as string;
         const latitude = formData.get('latitude') as string;
         const longitude = formData.get('longitude') as string;
@@ -292,6 +306,42 @@ export async function POST(
             }, { status: 500 });
         }
 
+        // Upload thumbnail if provided
+        let thumbnailUrl = null;
+        if (thumbnail) {
+            // Validate thumbnail is an image
+            if (!thumbnail.type.startsWith('image/')) {
+                await supabaseAdmin.storage.from('project-files').remove([filePath]);
+                return NextResponse.json({
+                    success: false,
+                    error: 'Thumbnail must be an image file',
+                    code: 'INVALID_THUMBNAIL'
+                }, { status: 400 });
+            }
+
+            const thumbnailFilename = `thumb_${uniqueFilename}`;
+            const thumbnailPath = `projects/${projectId}/thumbnails/${thumbnailFilename}`;
+
+            const { error: thumbnailUploadError } = await supabaseAdmin.storage
+                .from('project-files')
+                .upload(thumbnailPath, await thumbnail.arrayBuffer(), {
+                    contentType: thumbnail.type,
+                    duplex: 'half'
+                });
+
+            if (thumbnailUploadError) {
+                console.error('📱 Thumbnail upload error:', thumbnailUploadError.message);
+                await supabaseAdmin.storage.from('project-files').remove([filePath]);
+                return NextResponse.json({
+                    success: false,
+                    error: 'Failed to upload thumbnail',
+                    code: 'THUMBNAIL_UPLOAD_ERROR'
+                }, { status: 500 });
+            }
+
+            thumbnailUrl = thumbnailPath;
+        }
+
         // Get project name for the files table
         const { data: project } = await supabaseAdmin
             .from('projects')
@@ -308,6 +358,7 @@ export async function POST(
                 file_name: originalName,
                 file_size: file.size,
                 file_url: filePath,
+                thumbnail_url: thumbnailUrl,
                 latitude: lat,
                 longitude: lng,
                 uploaded_by: userId,
@@ -318,6 +369,7 @@ export async function POST(
                 file_name,
                 file_size,
                 file_url,
+                thumbnail_url,
                 latitude,
                 longitude,
                 created_at
@@ -327,10 +379,11 @@ export async function POST(
         if (dbError) {
             console.error('📱 File record creation error:', dbError.message);
 
-            // Try to clean up uploaded file
-            await supabaseAdmin.storage
-                .from('project-files')
-                .remove([filePath]);
+            // Try to clean up uploaded files
+            await supabaseAdmin.storage.from('project-files').remove([filePath]);
+            if (thumbnailUrl) {
+                await supabaseAdmin.storage.from('project-files').remove([thumbnailUrl]);
+            }
 
             return NextResponse.json({
                 success: false,
@@ -344,6 +397,15 @@ export async function POST(
             .from('project-files')
             .createSignedUrl(fileRecord.file_url, 3600); // URL valid for 1 hour
 
+        // Generate signed URL for thumbnail if exists
+        let thumbnailSignedUrl = null;
+        if (fileRecord.thumbnail_url) {
+            const { data: thumbnailSignedData } = await supabaseAdmin.storage
+                .from('project-files')
+                .createSignedUrl(fileRecord.thumbnail_url, 3600);
+            thumbnailSignedUrl = thumbnailSignedData?.signedUrl || null;
+        }
+
         return NextResponse.json({
             success: true,
             message: 'File uploaded successfully',
@@ -355,6 +417,8 @@ export async function POST(
                     type: file.type,
                     url: fileRecord.file_url,
                     signedUrl: signedUrlData?.signedUrl || null,
+                    thumbnailUrl: fileRecord.thumbnail_url || null,
+                    thumbnailSignedUrl: thumbnailSignedUrl || null,
                     location: fileRecord.latitude && fileRecord.longitude ? {
                         latitude: fileRecord.latitude,
                         longitude: fileRecord.longitude
@@ -675,7 +739,7 @@ export async function DELETE(
         // Get file details to verify it exists and get storage path
         const { data: fileToDelete, error: fileError } = await supabaseAdmin
             .from('files')
-            .select('id, file_name, file_url, uploaded_by')
+            .select('id, file_name, file_url, thumbnail_url, uploaded_by')
             .eq('id', fileId)
             .eq('project_id', projectId)
             .single();
@@ -700,9 +764,14 @@ export async function DELETE(
         }
 
         // Delete file from storage first
+        const filesToDelete = [fileToDelete.file_url];
+        if (fileToDelete.thumbnail_url) {
+            filesToDelete.push(fileToDelete.thumbnail_url);
+        }
+
         const { error: storageError } = await supabaseAdmin.storage
             .from('project-files')
-            .remove([fileToDelete.file_url]);
+            .remove(filesToDelete);
 
         if (storageError) {
             console.error('📱 Storage deletion error:', storageError.message);

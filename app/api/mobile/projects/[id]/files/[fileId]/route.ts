@@ -79,6 +79,7 @@ export async function GET(
                 file_name,
                 file_size,
                 file_url,
+                thumbnail_url,
                 latitude,
                 longitude,
                 created_at,
@@ -108,12 +109,23 @@ export async function GET(
             .from('project-files')
             .createSignedUrl(file.file_url, 3600); // URL valid for 1 hour
 
+        // Generate signed URL for the thumbnail if it exists
+        let thumbnailSignedUrl = null;
+        if (file.thumbnail_url) {
+            const { data: thumbnailSignedData } = await supabaseAdmin.storage
+                .from('project-files')
+                .createSignedUrl(file.thumbnail_url, 3600);
+            thumbnailSignedUrl = thumbnailSignedData?.signedUrl || null;
+        }
+
         const formattedFile = {
             id: file.id,
             name: file.file_name,
             size: file.file_size,
             url: file.file_url,
             signedUrl: signedUrlData?.signedUrl || null,
+            thumbnailUrl: file.thumbnail_url,
+            thumbnailSignedUrl,
             location: file.latitude && file.longitude ? {
                 latitude: file.latitude,
                 longitude: file.longitude
@@ -314,6 +326,7 @@ export async function PUT(
                 file_name,
                 file_size,
                 file_url,
+                thumbnail_url,
                 latitude,
                 longitude,
                 created_at,
@@ -335,6 +348,15 @@ export async function PUT(
             .from('project-files')
             .createSignedUrl(updatedFile.file_url, 3600); // URL valid for 1 hour
 
+        // Generate signed URL for the thumbnail if it exists
+        let thumbnailSignedUrl = null;
+        if (updatedFile.thumbnail_url) {
+            const { data: thumbnailSignedData } = await supabaseAdmin.storage
+                .from('project-files')
+                .createSignedUrl(updatedFile.thumbnail_url, 3600);
+            thumbnailSignedUrl = thumbnailSignedData?.signedUrl || null;
+        }
+
         return NextResponse.json({
             success: true,
             message: 'File updated successfully',
@@ -345,6 +367,8 @@ export async function PUT(
                     size: updatedFile.file_size,
                     url: updatedFile.file_url,
                     signedUrl: signedUrlData?.signedUrl || null,
+                    thumbnailUrl: updatedFile.thumbnail_url,
+                    thumbnailSignedUrl,
                     location: updatedFile.latitude && updatedFile.longitude ? {
                         latitude: updatedFile.latitude,
                         longitude: updatedFile.longitude
