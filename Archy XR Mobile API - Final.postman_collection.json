@@ -1,0 +1,1998 @@
+	{
+	"info": {
+		"_postman_id": "1bb42922-f3ff-4f27-9c90-c404bf923fc6",
+		"name": "Archy XR Mobile API - Final",
+		"description": "Production-ready mobile API collection for Archy XR with authentication, projects, and file management.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "33467424",
+		"_collection_link": "https://fyss11.postman.co/workspace/xrarchy-mobile~e4c46fe5-2e73-4454-b4f2-76578ec674a1/collection/33467424-1bb42922-f3ff-4f27-9c90-c404bf923fc6?action=share&source=collection_link&creator=33467424"
+	},
+	"item": [
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.user) {",
+									"    pm.environment.set('user_id', response.data.user.id);",
+									"    pm.environment.set('user_email', response.data.user.email);",
+									"    console.log('👤 User registered:', response.data.user.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"role\": \"User\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Email (Helper)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{test_email}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/manual-confirm",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"manual-confirm"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.session) {",
+									"    pm.environment.set('access_token', response.data.session.accessToken);",
+									"    pm.environment.set('refresh_token', response.data.session.refreshToken);",
+									"    pm.environment.set('user_role', response.data.user.role);",
+									"    console.log('🔑 Login successful for:', response.data.user.email);",
+									"    console.log('👤 Role:', response.data.user.role);",
+									"}"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.session) {",
+									"    pm.environment.set('admin_token', response.data.session.accessToken);",
+									"    pm.environment.set('admin_refresh', response.data.session.refreshToken);",
+									"    console.log('👑 Admin login successful:', response.data.user.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Login Archivist",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.session) {",
+									"    pm.environment.set('archivist_token', response.data.session.accessToken);",
+									"    pm.environment.set('archivist_refresh', response.data.session.refreshToken);",
+									"    console.log('📚 Archivist login successful:', response.data.user.email);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{archivist_email}}\",\n  \"password\": \"{{archivist_password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"password\": \"newpassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.session) {",
+									"    pm.environment.set('access_token', response.data.session.accessToken);",
+									"    pm.environment.set('refresh_token', response.data.session.refreshToken);",
+									"    console.log('🔄 Token refreshed successfully');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/refresh",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"refresh"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "📁 Projects",
+			"item": [
+				{
+					"name": "List Projects",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.projects.length > 0) {",
+									"    pm.environment.set('project_id', response.data.projects[0].id);",
+									"    console.log('📁 Projects found:', response.data.totalCount);",
+									"    console.log('💾 Saved project ID:', response.data.projects[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Project (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.project) {",
+									"    pm.environment.set('new_project_id', response.data.project.id);",
+									"    console.log('✅ Project created:', response.data.project.name);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Eiffel Tower AR Experience\",\n  \"description\": \"Interactive AR tour of the Eiffel Tower with historical information\",\n  \"location\": {\n    \"latitude\": {{eiffel_latitude}},\n    \"longitude\": {{eiffel_longitude}},\n    \"name\": \"{{eiffel_name}}\",\n    \"address\": \"{{eiffel_address}}\",\n    \"description\": \"{{eiffel_description}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Project (Mobile Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.project) {",
+									"    pm.environment.set('mobile_new_project_id', response.data.project.id);",
+									"    console.log('✅ Mobile project created:', response.data.project.name);",
+									"    console.log('📍 Location:', response.data.project.location);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Mobile Created Project\",\n  \"description\": \"This project was created via mobile API endpoint\",\n  \"location\": {\n    \"latitude\": {{eiffel_latitude}},\n    \"longitude\": {{eiffel_longitude}},\n    \"name\": \"{{eiffel_name}}\",\n    \"address\": \"{{eiffel_address}}\",\n    \"description\": \"{{eiffel_description}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Browse All Projects",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.projects.length > 0) {",
+									"    const firstProject = response.data.projects[0];",
+									"    pm.environment.set('browse_project_id', firstProject.id);",
+									"    console.log('🔍 Browse found', response.data.totalCount, 'projects');",
+									"    console.log('📁 Projects with access:', response.data.projects.filter(p => p.canAccess).length);",
+									"    console.log('📌 Assigned projects:', response.data.projects.filter(p => p.isAssigned).length);",
+									"    console.log('🎯 Sample project for testing:', firstProject.name);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/browse?page=1&limit=20&search=",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"browse"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (starts from 1)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Results per page (max 50)"
+								},
+								{
+									"key": "search",
+									"value": "",
+									"description": "Search term for project name, description, or location"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Project Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Project (Admin)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Project Name\",\n  \"description\": \"Updated via Postman\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "� Project Discovery",
+			"item": [
+				{
+					"name": "User Browse All Projects",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success) {",
+									"    console.log('👤 User can browse', response.data.totalCount, 'total projects');",
+									"    console.log('📁 User has access to', response.data.projects.filter(p => p.canAccess).length, 'projects');",
+									"    console.log('📌 User is assigned to', response.data.projects.filter(p => p.isAssigned).length, 'projects');",
+									"    ",
+									"    // Show project access status",
+									"    response.data.projects.forEach(project => {",
+									"        const status = project.isAssigned ? '✅ Assigned' : (project.canAccess ? '👁️ Access' : '🚫 No Access');",
+									"        console.log(`${status}: ${project.name}`);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/browse?limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"browse"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Admin Browse All Projects",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success) {",
+									"    console.log('👑 Admin can browse', response.data.totalCount, 'total projects');",
+									"    console.log('🔓 Admin has access to ALL projects');",
+									"    ",
+									"    // Show all projects admin can access",
+									"    response.data.projects.forEach(project => {",
+									"        const assignStatus = project.isAssigned ? ' (Assigned)' : '';",
+									"        console.log(`🏢 ${project.name}${assignStatus} - ${project.stats.fileCount} files`);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/browse",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"browse"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Search Projects",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success) {",
+									"    console.log('🔍 Search found', response.data.projects.length, 'matching projects');",
+									"    console.log('📝 Search term:', response.data.filters.search);",
+									"    ",
+									"    response.data.projects.forEach(project => {",
+									"        console.log(`📁 ${project.name} - ${project.description || 'No description'}`);",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/browse?search=tower",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"browse"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "tower",
+									"description": "Search for projects containing 'tower'"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Compare: Assigned vs Browse",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success) {",
+									"    console.log('📊 COMPARISON: User Assigned vs Browse All');",
+									"    console.log('');",
+									"    console.log('👤 Regular project list (assigned only):');",
+									"    console.log('   - This shows only projects user is assigned to');",
+									"    console.log('   - Limited view for non-admin users');",
+									"    console.log('');",
+									"    console.log('🔍 Browse all projects:');",
+									"    console.log('   - Shows all projects in the system');",
+									"    console.log('   - Indicates which ones user can access');",
+									"    console.log('   - Helps users discover available projects');",
+									"    console.log('');",
+									"    console.log(`📈 Total discoverable: ${response.data.totalCount} projects`);",
+									"    console.log(`🔐 User has access to: ${response.data.projects.filter(p => p.canAccess).length} projects`);",
+									"    console.log(`📋 User is assigned to: ${response.data.projects.filter(p => p.isAssigned).length} projects`);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/browse",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"browse"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Test browsing and discovery features for different user roles"
+		},
+		{
+			"name": "�🔒 Permission Tests",
+			"item": [
+				{
+					"name": "User Try Create Project (Should Fail)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Unauthorized Project\",\n  \"description\": \"This should fail\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Invalid Token Test",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsImtpZCI6IjhMOWNtZnBPOGxqYnNhanoiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2pxaXB1cWR0aWllY2F5dHJsaXdqLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI4NmYxM2M4Ni0zZGRmLTRiNGMtYWU3YS1kMzI4ZDAzY2Y0NTUiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzU1Mjk4Mjk3LCJpYXQiOjE3NTUyOTQ2OTcsImVtYWlsIjoid2F4b3BhNDUxMkBjcm9uYWNrLmNvbSIsInBob25lIjoiIiwiYXBwX21ldGFkYXRhIjp7InByb3ZpZGVyIjoiZW1haWwiLCJwcm92aWRlcnMiOlsiZW1haWwiXX0sInVzZXJfbWV0YWRhdGEiOnsiZW1haWxfdmVyaWZpZWQiOnRydWUsInJvbGUiOiJVc2VyIn0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NTUyOTQ2OTd9XSwic2Vzc2lvbl9pZCI6IjExMTEwODNmLTNjYjQtNDQ1NS1iOGQwLTZiNzJjYmEzZDM5YSIsImlzX2Fub255bW91cyI6ZmFsc2V9.QhySrhBvfGnokXtmN_iV21fsFXiyDi-Awm6gVlYSrlo",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "🔥 Admin Project Management",
+			"item": [
+				{
+					"name": "Get All Projects (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.projects.length > 0) {",
+									"    pm.environment.set('sample_project_id', response.data.projects[0].id);",
+									"    console.log('📁 Found', response.data.projects.length, 'projects');",
+									"    console.log('🎯 Set sample project ID:', response.data.projects[0].id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Project (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.project) {",
+									"    pm.environment.set('new_project_id', response.data.project.id);",
+									"    console.log('✨ New project created:', response.data.project.name);",
+									"    console.log('🆔 Project ID:', response.data.project.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Test Project from Postman\",\n  \"description\": \"This is a test project created via Postman API\",\n  \"location\": {\n    \"latitude\": 41.8902,\n    \"longitude\": 12.4922,\n    \"name\": \"Colosseum\",\n    \"address\": \"Piazza del Colosseo, 1, 00184 Roma RM, Italy\",\n    \"description\": \"Ancient Roman amphitheatre in the centre of the city of Rome\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create Project - Great Wall (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.project) {",
+									"    pm.environment.set('great_wall_project_id', response.data.project.id);",
+									"    console.log('🏯 Great Wall project created:', response.data.project.name);",
+									"    console.log('📍 Location:', response.data.project.location_name);",
+									"    console.log('🌍 Coordinates:', response.data.project.latitude, response.data.project.longitude);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Great Wall AR Explorer\",\n  \"description\": \"Virtual exploration of the Great Wall of China with historical timeline\",\n  \"location\": {\n    \"latitude\": {{great_wall_latitude}},\n    \"longitude\": {{great_wall_longitude}},\n    \"name\": \"{{great_wall_name}}\",\n    \"address\": \"{{great_wall_address}}\",\n    \"description\": \"{{great_wall_description}}\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Project Details (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/projects/{{sample_project_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"projects",
+								"{{sample_project_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Project (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Project Name\",\n  \"description\": \"This project has been updated via Postman API\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/admin/projects/{{new_project_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"projects",
+								"{{new_project_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Project (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success) {",
+									"    console.log('🗑️ Project deleted:', response.data.deleted_project_name);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/admin/projects/{{new_project_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"admin",
+								"projects",
+								"{{new_project_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Admin-only endpoints for complete project management"
+		},
+		{
+			"name": "🚀 Complete Mobile Workflow",
+			"item": [
+				{
+					"name": "1. Register → Login → Browse",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"// This is a documentation request showing the complete workflow",
+									"console.log('📱 MOBILE APP WORKFLOW:');",
+									"console.log('');",
+									"console.log('1. 👤 Register User → Create account');",
+									"console.log('2. ✉️ Confirm Email → Manual helper endpoint');",
+									"console.log('3. 🔑 Login User → Get access token');",
+									"console.log('4. 📱 Get Profile → User details & stats');",
+									"console.log('5. 📋 List Assigned → Projects user is assigned to');",
+									"console.log('6. 🔍 Browse All → Discover available projects');",
+									"console.log('7. 🏢 Project Details → Get specific project info');",
+									"console.log('8. 📎 List Files → Files in accessible projects');",
+									"console.log('9. 📥 Download File → Get download URL/stream');",
+									"console.log('10. 🔄 Refresh Token → Maintain session');",
+									"console.log('11. 🚪 Logout → Clean session end');",
+									"console.log('');",
+									"console.log('🎯 KEY FEATURES:');",
+									"console.log('   • Users can browse ALL projects (not just assigned)');",
+									"console.log('   • Clear indication of access permissions');",
+									"console.log('   • Location data with coordinates & descriptions');",
+									"console.log('   • Comprehensive error handling with codes');",
+									"console.log('   • File management with secure downloads');",
+									"console.log('   • Role-based access control');",
+									"console.log('');",
+									"console.log('✅ Run individual requests to test each step!');"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/auth/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"auth",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test Mobile Project Creation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.project) {",
+									"    pm.environment.set('workflow_project_id', response.data.project.id);",
+									"    console.log('🏗️ Created project via mobile API:', response.data.project.name);",
+									"    console.log('📍 Location stored:', response.data.project.location.name);",
+									"    console.log('📝 Full location data available:', !!response.data.project.location.address);",
+									"} else {",
+									"    console.log('❌ Project creation failed:', response.error);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Workflow Test Project\",\n  \"description\": \"Testing the complete mobile workflow with location data and error handling\",\n  \"location\": {\n    \"latitude\": 51.5074,\n    \"longitude\": -0.1278,\n    \"name\": \"Big Ben\",\n    \"address\": \"Westminster, London SW1A 0AA, UK\",\n    \"description\": \"The iconic clock tower of the Palace of Westminster\"\n  }\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify New Project in Browse",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success) {",
+									"    const workflowProject = response.data.projects.find(p => p.name === 'Workflow Test Project');",
+									"    if (workflowProject) {",
+									"        console.log('✅ New project appears in browse results');",
+									"        console.log('🆔 Project ID:', workflowProject.id);",
+									"        console.log('📍 Location data preserved:', workflowProject.location.name);",
+									"        console.log('🔐 Admin access confirmed:', workflowProject.canAccess);",
+									"        pm.environment.set('verified_project_id', workflowProject.id);",
+									"    } else {",
+									"        console.log('⚠️ Project not found in browse results yet');",
+									"    }",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/browse?search=Workflow",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"browse"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "Workflow"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "End-to-end mobile app workflow testing"
+		},
+		{
+			"name": "📥 Mobile File Download",
+			"item": [
+				{
+					"name": "Get Download URL",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.file.downloadUrl) {",
+									"    pm.environment.set('download_url', response.data.file.downloadUrl);",
+									"    console.log('🔗 Download URL generated for:', response.data.file.name);",
+									"    console.log('⏰ Expires at:', response.data.file.expiresAt);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{sample_project_id}}/files/{{sample_file_id}}/download",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{sample_project_id}}",
+								"files",
+								"{{sample_file_id}}",
+								"download"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Direct File Stream",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{sample_project_id}}/files/{{sample_file_id}}/download",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{sample_project_id}}",
+								"files",
+								"{{sample_file_id}}",
+								"download"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Test External Download URL",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"if (!pm.environment.get('download_url')) {",
+									"    console.log('⚠️ No download URL set. Run \\\"Get Download URL\\\" first.');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{download_url}}",
+							"host": [
+								"{{download_url}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Mobile endpoints for downloading files from projects"
+		},
+		{
+			"name": "📎 Files",
+			"item": [
+				{
+					"name": "List Files",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.files && response.data.files.length > 0) {",
+									"    pm.environment.set('sample_file_id', response.data.files[0].id);",
+									"    console.log('📄 Files found:', response.data.files.length);",
+									"    console.log('📌 Saved sample_file_id:', response.data.files[0].id);",
+									"    console.log('🧭 First file height:', response.data.files[0].height, 'rotation:', response.data.files[0].rotation);",
+									"} else {",
+									"    console.log('📭 No files found in project');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}",
+								"files"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Upload File (with height/rotation)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.file) {",
+									"    pm.environment.set('uploaded_file_id', response.data.file.id);",
+									"    console.log('📤 Uploaded file ID:', response.data.file.id);",
+									"    console.log('📁 File name:', response.data.file.name);",
+									"    console.log('🧭 Height:', response.data.file.height, 'meters');",
+									"    console.log('🔄 Rotation:', response.data.file.rotation, 'degrees');",
+									"    console.log('🔗 Storage path:', response.data.file.storage_path);",
+									"} else {",
+									"    console.log('❌ Upload failed:', response.error);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "",
+									"description": "Select a file to upload"
+								},
+								{
+									"key": "height",
+									"value": "1.5000",
+									"type": "text",
+									"description": "Optional height in meters (e.g., 1.5000)"
+								},
+								{
+									"key": "rotation",
+									"value": "90.00",
+									"type": "text",
+									"description": "Optional rotation in degrees 0-360 (e.g., 90.00)"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}",
+								"files"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get File Metadata",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.file) {",
+									"    console.log('📄 File metadata retrieved:');",
+									"    console.log('  📁 Name:', response.data.file.name);",
+									"    console.log('  📏 Size:', response.data.file.size, 'bytes');",
+									"    console.log('  🏷️ Type:', response.data.file.type);",
+									"    console.log('  🧭 Height:', response.data.file.height, 'meters');",
+									"    console.log('  🔄 Rotation:', response.data.file.rotation, 'degrees');",
+									"    console.log('  📍 Lat/Lng:', response.data.file.latitude, response.data.file.longitude);",
+									"    console.log('  📅 Created:', response.data.file.created_at);",
+									"    pm.environment.set('current_file_height', response.data.file.height);",
+									"    pm.environment.set('current_file_rotation', response.data.file.rotation);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files/{{sample_file_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}",
+								"files",
+								"{{sample_file_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update File (height/rotation only)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.file) {",
+									"    console.log('✅ File updated successfully');",
+									"    console.log('📁 File name:', response.data.file.name);",
+									"    console.log('🧭 New height:', response.data.file.height, 'meters');",
+									"    console.log('🔄 New rotation:', response.data.file.rotation, 'degrees');",
+									"} else {",
+									"    console.log('❌ Update failed:', response.error);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"height\": 2.25,\n  \"rotation\": 45\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files/{{sample_file_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}",
+								"files",
+								"{{sample_file_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Clear File Location Fields",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success && response.data.file) {",
+									"    console.log('🧹 Location fields cleared');",
+									"    console.log('🧭 Height:', response.data.file.height);",
+									"    console.log('🔄 Rotation:', response.data.file.rotation);",
+									"    console.log('📍 Lat/Lng:', response.data.file.latitude, response.data.file.longitude);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"height\": null,\n  \"rotation\": null,\n  \"latitude\": null,\n  \"longitude\": null\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files/{{sample_file_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}",
+								"files",
+								"{{sample_file_id}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Thumbnail",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    console.log('🖼️ Thumbnail retrieved successfully');",
+									"    console.log('📏 Response size:', pm.response.responseSize, 'bytes');",
+									"    console.log('🏷️ Content-Type:', pm.response.headers.get('content-type'));",
+									"} else {",
+									"    console.log('❌ Thumbnail not found or error occurred');",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files/{{sample_file_id}}/thumbnail",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}",
+								"files",
+								"{{sample_file_id}}",
+								"thumbnail"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete File",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const response = pm.response.json();",
+									"if (response.success) {",
+									"    console.log('🗑️ File deleted successfully');",
+									"    console.log('📁 Deleted file:', response.data.deleted_file_name);",
+									"    pm.environment.unset('uploaded_file_id');",
+									"} else {",
+									"    console.log('❌ Deletion failed:', response.error);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{admin_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/projects/{{project_id}}/files/{{uploaded_file_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"projects",
+								"{{project_id}}",
+								"files",
+								"{{uploaded_file_id}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "File management endpoints with height/rotation support"
+			},
+		{
+			"name": "📁 browse",
+			"item": [
+				{
+					"name": "Browse Projects (public)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/browse/projects",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"browse",
+								"projects"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Browse Files (public)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/mobile/browse/files",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"browse",
+								"files"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Public read-only browse endpoints (no auth)."
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{access_token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"console.log('🚀 Request:', pm.info.requestName);"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"const response = pm.response.json();",
+					"if (response.success) {",
+					"    console.log('✅', pm.info.requestName, 'successful');",
+					"} else {",
+					"    console.log('❌', pm.info.requestName, 'failed:', response.error);",
+					"}",
+					"pm.test('Response has success field', () => {",
+					"    pm.expect(response).to.have.property('success');",
+					"});"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "test_email",
+			"value": "caxax53312@cronack.com",
+			"type": "string"
+		},
+		{
+			"key": "test_password",
+			"value": "caxax53312",
+			"type": "string"
+		},
+		{
+			"key": "admin_email",
+			"value": "cinani1527@cotasen.com",
+			"type": "string"
+		},
+		{
+			"key": "admin_password",
+			"value": "cinani1527",
+			"type": "string"
+		},
+		{
+			"key": "archivist_email",
+			"value": "ratbblkjiu@wnbaldwy.com",
+			"type": "string"
+		},
+		{
+			"key": "archivist_password",
+			"value": "ratbblkjiu",
+			"type": "string"
+		},
+		{
+			"key": "sample_project_id",
+			"value": "01a97bfa-b270-4dfb-8976-b657dee1b3e9",
+			"type": "string"
+		},
+		{
+			"key": "sample_file_id",
+			"value": "6",
+			"type": "string"
+		},
+		{
+			"key": "download_url",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "new_project_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_file_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_access_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "test_download_url",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "colosseum_lat",
+			"value": "41.8902",
+			"type": "string"
+		},
+		{
+			"key": "colosseum_lng",
+			"value": "12.4922",
+			"type": "string"
+		},
+		{
+			"key": "eiffel_lat",
+			"value": "48.8584",
+			"type": "string"
+		},
+		{
+			"key": "eiffel_lng",
+			"value": "2.2945",
+			"type": "string"
+		},
+		{
+			"key": "browse_project_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "mobile_new_project_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "workflow_project_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "verified_project_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "uploaded_file_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "current_file_height",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "current_file_rotation",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "eiffel_latitude",
+			"value": "48.8584",
+			"type": "string"
+		},
+		{
+			"key": "eiffel_longitude",
+			"value": "2.2945",
+			"type": "string"
+		},
+		{
+			"key": "eiffel_name",
+			"value": "Eiffel Tower",
+			"type": "string"
+		},
+		{
+			"key": "eiffel_address",
+			"value": "Champ de Mars, 5 Avenue Anatole France, 75007 Paris, France",
+			"type": "string"
+		},
+		{
+			"key": "eiffel_description",
+			"value": "Iron lattice tower on the Champ de Mars",
+			"type": "string"
+		},
+		{
+			"key": "great_wall_latitude",
+			"value": "40.4319",
+			"type": "string"
+		},
+		{
+			"key": "great_wall_longitude",
+			"value": "116.5704",
+			"type": "string"
+		},
+		{
+			"key": "great_wall_name",
+			"value": "Great Wall of China",
+			"type": "string"
+		},
+		{
+			"key": "great_wall_address",
+			"value": "Huairou District, Beijing, China",
+			"type": "string"
+		},
+		{
+			"key": "great_wall_description",
+			"value": "Ancient fortification system of walls and barriers",
+			"type": "string"
+		}
+	]
+}
+

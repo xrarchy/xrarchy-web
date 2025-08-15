@@ -113,11 +113,17 @@ export async function updateSession(request: NextRequest) {
         user?.email || 'none'
     );
 
-    // Allow confirmation pages to pass without auth
-    const allowedPaths = ['/login', '/register', '/auth', '/api', '/'];
+    // Allow confirmation pages and public API browse endpoints to pass without auth
+    const allowedPaths = ['/login', '/register', '/auth', '/api', '/', '/api/mobile/browse'];
     const isConfirmationRoute =
         request.nextUrl.pathname.startsWith('/confirm') ||
         request.nextUrl.pathname.startsWith('/api/auth/confirm');
+
+    // Explicitly skip session/update logic for public mobile browse endpoints
+    if (request.nextUrl.pathname.startsWith('/api/mobile/browse')) {
+        console.log('🔒 Middleware: Skipping session update for public mobile browse endpoint', request.nextUrl.pathname);
+        return response;
+    }
 
     if (isConfirmationRoute) {
         console.log('🔒 Middleware: Skipping auth check for confirmation route');
