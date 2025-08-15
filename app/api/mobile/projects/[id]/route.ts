@@ -115,11 +115,24 @@ export async function GET(
             console.error('📱 Assignments fetch error:', assignmentsError.message);
         }
 
-        // Get project files
+        // Get project files (explicit fields including location)
         const { data: files, error: filesError } = await supabaseAdmin
             .from('files')
-            .select('*')
-            .eq('project_id', projectId);
+            .select(`
+                id,
+                file_name,
+                file_size,
+                file_url,
+                thumbnail_url,
+                latitude,
+                longitude,
+                height,
+                rotation,
+                created_at,
+                uploaded_by
+            `)
+            .eq('project_id', projectId)
+            .order('created_at', { ascending: false });
 
         if (filesError) {
             console.error('📱 Files fetch error:', filesError.message);
@@ -159,11 +172,18 @@ export async function GET(
                 })),
                 files: (files || []).map(file => ({
                     id: file.id,
-                    name: file.name,
-                    size: file.size,
-                    type: file.type,
-                    uploadedAt: file.uploaded_at,
-                    url: file.url
+                    name: file.file_name,
+                    size: file.file_size,
+                    url: file.file_url,
+                    thumbnailUrl: file.thumbnail_url || null,
+                    uploadedAt: file.created_at,
+                    location: file.latitude && file.longitude ? {
+                        latitude: file.latitude,
+                        longitude: file.longitude,
+                        height: file.height ?? null,
+                        rotation: file.rotation ?? null
+                    } : null,
+                    uploadedBy: file.uploaded_by
                 })),
                 stats: {
                     assignmentCount: assignments?.length || 0,

@@ -41,6 +41,34 @@ BEGIN
         RAISE NOTICE 'Longitude column already exists in files table';
     END IF;
 
+    -- Add height column if it doesn't exist (optional float for file capture height)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'files' 
+        AND table_schema = 'public' 
+        AND column_name = 'height'
+    ) THEN
+        ALTER TABLE public.files
+        ADD COLUMN height DECIMAL(8,4) DEFAULT NULL;
+        RAISE NOTICE 'Added height column to files table';
+    ELSE
+        RAISE NOTICE 'Height column already exists in files table';
+    END IF;
+
+    -- Add rotation column if it doesn't exist (degrees, 0-360)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'files' 
+        AND table_schema = 'public' 
+        AND column_name = 'rotation'
+    ) THEN
+        ALTER TABLE public.files
+        ADD COLUMN rotation DECIMAL(7,4) DEFAULT NULL;
+        RAISE NOTICE 'Added rotation column to files table';
+    ELSE
+        RAISE NOTICE 'Rotation column already exists in files table';
+    END IF;
+
     -- Add comments to document the columns
     IF NOT lat_exists THEN
         COMMENT ON COLUMN public.files.latitude IS 'Latitude coordinate where the file was captured/created (optional)';
@@ -49,6 +77,9 @@ BEGIN
     IF NOT lng_exists THEN
         COMMENT ON COLUMN public.files.longitude IS 'Longitude coordinate where the file was captured/created (optional)';
     END IF;
+    -- Comments for new fields
+    COMMENT ON COLUMN public.files.height IS 'Optional capture height (meters) for the file (decimal)';
+    COMMENT ON COLUMN public.files.rotation IS 'Optional rotation in degrees (0-360) for the file (decimal)';
 
 END $$;
 
@@ -59,3 +90,25 @@ FROM information_schema.columns
 WHERE table_name = 'files' 
 AND table_schema = 'public'
 ORDER BY ordinal_position;
+
+-- Add CHECK constraints for height and rotation if they don't already exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint c
+        JOIN pg_class t ON c.conrelid = t.oid
+        WHERE c.conname = 'chk_files_height_nonnegative' AND t.relname = 'files'
+    ) THEN
+        ALTER TABLE public.files
+            ADD CONSTRAINT chk_files_height_nonnegative CHECK (height IS NULL OR height >= 0);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint c
+        JOIN pg_class t ON c.conrelid = t.oid
+        WHERE c.conname = 'chk_files_rotation_range' AND t.relname = 'files'
+    ) THEN
+        ALTER TABLE public.files
+            ADD CONSTRAINT chk_files_rotation_range CHECK (rotation IS NULL OR (rotation >= 0 AND rotation <= 360));
+    END IF;
+END$$;

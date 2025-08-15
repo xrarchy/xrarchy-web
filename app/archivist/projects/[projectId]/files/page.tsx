@@ -41,6 +41,8 @@ interface ProjectFile {
         id: string;
         email: string;
     };
+    height?: number | null;
+    rotation?: number | null;
 }
 
 interface Project {
@@ -58,6 +60,8 @@ export default function ArchivistProjectFiles({ params }: { params: Promise<{ pr
     const [showUpload, setShowUpload] = useState(false);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [description, setDescription] = useState('');
+    const [height, setHeight] = useState('');
+    const [rotation, setRotation] = useState('');
     const [projectId, setProjectId] = useState<string>('');
     const [deleteDialog, setDeleteDialog] = useState<{
         isOpen: boolean;
@@ -170,6 +174,12 @@ export default function ArchivistProjectFiles({ params }: { params: Promise<{ pr
             if (description) {
                 formData.append('description', description);
             }
+                if (height) {
+                    formData.append('height', height);
+                }
+                if (rotation) {
+                    formData.append('rotation', rotation);
+                }
 
             const response = await fetch(`/api/projects/${projectId}/files`, {
                 method: 'POST',
@@ -185,6 +195,8 @@ export default function ArchivistProjectFiles({ params }: { params: Promise<{ pr
 
             setSelectedFile(null);
             setDescription('');
+            setHeight('');
+            setRotation('');
             setShowUpload(false);
             fetchProjectAndFiles();
         } catch (error) {
@@ -454,6 +466,8 @@ export default function ArchivistProjectFiles({ params }: { params: Promise<{ pr
                                     <TableRow>
                                         <TableHead>Filename</TableHead>
                                         <TableHead>Size</TableHead>
+                                        <TableHead>Height</TableHead>
+                                        <TableHead>Rotation</TableHead>
                                         <TableHead>Uploaded By</TableHead>
                                         <TableHead>Uploaded</TableHead>
                                         <TableHead>Actions</TableHead>
@@ -467,6 +481,12 @@ export default function ArchivistProjectFiles({ params }: { params: Promise<{ pr
                                             </TableCell>
                                             <TableCell className="text-sm">
                                                 {formatFileSize(file.file_size)}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {file.height !== null && file.height !== undefined ? `${Number(file.height).toFixed(4)} m` : <span className="text-muted-foreground">—</span>}
+                                            </TableCell>
+                                            <TableCell className="text-sm">
+                                                {file.rotation !== null && file.rotation !== undefined ? `${Number(file.rotation).toFixed(2)}°` : <span className="text-muted-foreground">—</span>}
                                             </TableCell>
                                             <TableCell className="text-sm">
                                                 <div className="flex items-center space-x-1">

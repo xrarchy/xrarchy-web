@@ -105,17 +105,24 @@ export async function GET(
             }
         }
 
-        // Get files separately
+        // Get files separately (include location fields)
         const { data: files } = await supabase
             .from('files')
             .select(`
                 id,
                 file_name,
                 file_size,
+                file_url,
+                thumbnail_url,
+                latitude,
+                longitude,
+                height,
+                rotation,
                 created_at,
                 uploaded_by
             `)
-            .eq('project_id', id);
+            .eq('project_id', id)
+            .order('created_at', { ascending: false });
 
         // Get uploaded_by user details for each file
         const filesWithUsers = [];
@@ -131,7 +138,15 @@ export async function GET(
                     id: file.id,
                     name: file.file_name,
                     size: file.file_size,
+                    url: file.file_url,
+                    thumbnailUrl: file.thumbnail_url || null,
                     created_at: file.created_at,
+                    location: file.latitude && file.longitude ? {
+                        latitude: file.latitude,
+                        longitude: file.longitude,
+                        height: file.height ?? null,
+                        rotation: file.rotation ?? null
+                    } : null,
                     uploaded_by_user: uploadedByUser || { email: 'Unknown' }
                 });
             }

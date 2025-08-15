@@ -15,7 +15,7 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
 });
 
 async function addLocationColumns() {
-    console.log('🚀 Adding latitude and longitude columns to files table...\n');
+    console.log('🚀 Adding latitude, longitude, height and rotation columns to files table...\n');
 
     try {
         // Check if columns already exist
@@ -24,7 +24,7 @@ async function addLocationColumns() {
             .select('column_name')
             .eq('table_name', 'files')
             .eq('table_schema', 'public')
-            .in('column_name', ['latitude', 'longitude']);
+            .in('column_name', ['latitude', 'longitude', 'height', 'rotation']);
 
         if (checkError) {
             console.error('❌ Error checking existing columns:', checkError);
@@ -32,14 +32,18 @@ async function addLocationColumns() {
         }
 
         const existingColumnNames = existingColumns?.map(col => col.column_name) || [];
-        const latExists = existingColumnNames.includes('latitude');
-        const lngExists = existingColumnNames.includes('longitude');
+    const latExists = existingColumnNames.includes('latitude');
+    const lngExists = existingColumnNames.includes('longitude');
+    const heightExists = existingColumnNames.includes('height');
+    const rotationExists = existingColumnNames.includes('rotation');
 
         console.log(`📊 Current status:`);
-        console.log(`   - Latitude column exists: ${latExists}`);
-        console.log(`   - Longitude column exists: ${lngExists}\n`);
+    console.log(`   - Latitude column exists: ${latExists}`);
+    console.log(`   - Longitude column exists: ${lngExists}`);
+    console.log(`   - Height column exists: ${heightExists}`);
+    console.log(`   - Rotation column exists: ${rotationExists}\n`);
 
-        // Add latitude column if it doesn't exist
+    // Add latitude column if it doesn't exist
         if (!latExists) {
             console.log('➕ Adding latitude column...');
             const { error: latError } = await supabase.rpc('exec_sql', {
@@ -55,7 +59,7 @@ async function addLocationColumns() {
             console.log('ℹ️  Latitude column already exists');
         }
 
-        // Add longitude column if it doesn't exist
+    // Add longitude column if it doesn't exist
         if (!lngExists) {
             console.log('➕ Adding longitude column...');
             const { error: lngError } = await supabase.rpc('exec_sql', {
@@ -71,8 +75,40 @@ async function addLocationColumns() {
             console.log('ℹ️  Longitude column already exists');
         }
 
+        // Add height column if it doesn't exist
+        if (!heightExists) {
+            console.log('➕ Adding height column...');
+            const { error: heightError } = await supabase.rpc('exec_sql', {
+                sql: 'ALTER TABLE public.files ADD COLUMN height DECIMAL(8, 4) DEFAULT NULL;'
+            });
+
+            if (heightError) {
+                console.error('❌ Error adding height column:', heightError);
+                return;
+            }
+            console.log('✅ Height column added successfully');
+        } else {
+            console.log('ℹ️  Height column already exists');
+        }
+
+        // Add rotation column if it doesn't exist
+        if (!rotationExists) {
+            console.log('➕ Adding rotation column...');
+            const { error: rotError } = await supabase.rpc('exec_sql', {
+                sql: 'ALTER TABLE public.files ADD COLUMN rotation DECIMAL(7, 4) DEFAULT NULL;'
+            });
+
+            if (rotError) {
+                console.error('❌ Error adding rotation column:', rotError);
+                return;
+            }
+            console.log('✅ Rotation column added successfully');
+        } else {
+            console.log('ℹ️  Rotation column already exists');
+        }
+
         // Add comments to document the columns
-        if (!latExists || !lngExists) {
+        if (!latExists || !lngExists || !heightExists || !rotationExists) {
             console.log('\n📝 Adding column comments...');
 
             if (!latExists) {
@@ -84,6 +120,18 @@ async function addLocationColumns() {
             if (!lngExists) {
                 await supabase.rpc('exec_sql', {
                     sql: "COMMENT ON COLUMN public.files.longitude IS 'Longitude coordinate where the file was captured/created (optional)';"
+                });
+            }
+
+            if (!heightExists) {
+                await supabase.rpc('exec_sql', {
+                    sql: "COMMENT ON COLUMN public.files.height IS 'Optional capture height (meters) for the file (decimal)';"
+                });
+            }
+
+            if (!rotationExists) {
+                await supabase.rpc('exec_sql', {
+                    sql: "COMMENT ON COLUMN public.files.rotation IS 'Optional rotation in degrees (0-360) for the file (decimal)';"
                 });
             }
 
@@ -105,7 +153,7 @@ async function addLocationColumns() {
         }
 
         updatedSchema?.forEach((col, index) => {
-            const isNew = ['latitude', 'longitude'].includes(col.column_name);
+            const isNew = ['latitude', 'longitude', 'height', 'rotation'].includes(col.column_name);
             const marker = isNew ? '🆕' : '   ';
             console.log(`${marker} ${index + 1}. ${col.column_name} (${col.data_type}) - Nullable: ${col.is_nullable}`);
         });

@@ -82,6 +82,8 @@ export async function GET(
                 thumbnail_url,
                 latitude,
                 longitude,
+                height,
+                rotation,
                 created_at,
                 uploaded_by
             `)
@@ -128,7 +130,9 @@ export async function GET(
             thumbnailSignedUrl,
             location: file.latitude && file.longitude ? {
                 latitude: file.latitude,
-                longitude: file.longitude
+                longitude: file.longitude,
+                height: file.height ?? null,
+                rotation: file.rotation ?? null
             } : null,
             uploadedAt: file.created_at,
             uploadedBy: {
@@ -191,8 +195,8 @@ export async function PUT(
         const fileId = resolvedParams.fileId;
         const body = await request.json();
 
-        // Extract update fields from request body
-        const { latitude, longitude, file_name } = body;
+    // Extract update fields from request body
+    const { latitude, longitude, file_name, height, rotation } = body;
 
         // Get user role and check permissions
         const { data: userProfile, error: profileError } = await supabaseAdmin
@@ -230,7 +234,7 @@ export async function PUT(
         // Get current file to verify it exists and belongs to the project
         const { data: currentFile, error: fileError } = await supabaseAdmin
             .from('files')
-            .select('id, file_name, uploaded_by, latitude, longitude')
+            .select('id, file_name, uploaded_by, latitude, longitude, height, rotation')
             .eq('id', fileId)
             .eq('project_id', projectId)
             .single();
@@ -258,11 +262,13 @@ export async function PUT(
         const updateFields: {
             latitude?: number | null;
             longitude?: number | null;
+            height?: number | null;
+            rotation?: number | null;
             file_name?: string;
         } = {};
 
         // Validate and update coordinates if provided
-        if (latitude !== undefined) {
+    if (latitude !== undefined || height !== undefined || rotation !== undefined) {
             if (latitude === null) {
                 updateFields.latitude = null;
             } else {
@@ -291,6 +297,32 @@ export async function PUT(
                     }, { status: 400 });
                 }
                 updateFields.longitude = lng;
+            }
+        }
+
+        // Height may be null to clear
+        if (height !== undefined) {
+            if (height === null) {
+                updateFields.height = null;
+            } else {
+                const hh = parseFloat(height);
+                if (isNaN(hh)) {
+                    return NextResponse.json({ success: false, error: 'Invalid height', code: 'INVALID_HEIGHT' }, { status: 400 });
+                }
+                updateFields.height = hh;
+            }
+        }
+
+        // Rotation may be null to clear
+        if (rotation !== undefined) {
+            if (rotation === null) {
+                updateFields.rotation = null;
+            } else {
+                const rr = parseFloat(rotation);
+                if (isNaN(rr) || rr < 0 || rr > 360) {
+                    return NextResponse.json({ success: false, error: 'Invalid rotation. Must be between 0 and 360', code: 'INVALID_ROTATION' }, { status: 400 });
+                }
+                updateFields.rotation = rr;
             }
         }
 
@@ -329,6 +361,8 @@ export async function PUT(
                 thumbnail_url,
                 latitude,
                 longitude,
+                height,
+                rotation,
                 created_at,
                 uploaded_by
             `)
@@ -371,7 +405,9 @@ export async function PUT(
                     thumbnailSignedUrl,
                     location: updatedFile.latitude && updatedFile.longitude ? {
                         latitude: updatedFile.latitude,
-                        longitude: updatedFile.longitude
+                        longitude: updatedFile.longitude,
+                        height: updatedFile.height ?? null,
+                        rotation: updatedFile.rotation ?? null
                     } : null,
                     uploadedAt: updatedFile.created_at,
                     uploadedBy: updatedFile.uploaded_by

@@ -80,6 +80,8 @@ export async function GET(
                 thumbnail_url,
                 latitude,
                 longitude,
+                height,
+                rotation,
                 created_at,
                 uploaded_by
             `)
@@ -118,6 +120,8 @@ export async function GET(
             thumbnail_url: string | null;
             latitude: number | null;
             longitude: number | null;
+            height?: number | null;
+            rotation?: number | null;
             created_at: string;
             uploaded_by: string;
         }
@@ -148,10 +152,12 @@ export async function GET(
                     signedUrl: signedUrlData?.signedUrl || null,
                     thumbnailUrl: file.thumbnail_url,
                     thumbnailSignedUrl,
-                    location: file.latitude && file.longitude ? {
-                        latitude: file.latitude,
-                        longitude: file.longitude
-                    } : null,
+                            location: file.latitude && file.longitude ? {
+                                latitude: file.latitude,
+                                longitude: file.longitude,
+                                height: file.height ?? null,
+                                rotation: file.rotation ?? null
+                            } : null,
                     uploadedAt: file.created_at,
                     uploadedBy: {
                         email: profileMap.get(file.uploaded_by)?.email || 'Unknown'
@@ -249,11 +255,13 @@ export async function POST(
 
         // Parse form data
         const formData = await request.formData();
-        const file = formData.get('file') as File;
+    const file = formData.get('file') as File;
         const thumbnail = formData.get('thumbnail') as File;
         const fileName = formData.get('fileName') as string;
         const latitude = formData.get('latitude') as string;
         const longitude = formData.get('longitude') as string;
+    const height = formData.get('height') as string;
+    const rotation = formData.get('rotation') as string;
 
         if (!file) {
             return NextResponse.json({
@@ -264,10 +272,12 @@ export async function POST(
         }
 
         // Validate and parse coordinates if provided
-        let lat = null;
-        let lng = null;
+    let lat = null;
+    let lng = null;
+    let h = null;
+    let rot = null;
 
-        if (latitude && longitude) {
+    if (latitude && longitude) {
             lat = parseFloat(latitude);
             lng = parseFloat(longitude);
 
@@ -278,6 +288,22 @@ export async function POST(
                     error: 'Invalid coordinates. Latitude must be between -90 and 90, longitude between -180 and 180',
                     code: 'INVALID_COORDINATES'
                 }, { status: 400 });
+            }
+        }
+
+        // Validate height if provided (allow null to clear)
+        if (height !== undefined && height !== null && height !== '') {
+            h = parseFloat(height);
+            if (isNaN(h)) {
+                return NextResponse.json({ success: false, error: 'Invalid height', code: 'INVALID_HEIGHT' }, { status: 400 });
+            }
+        }
+
+        // Validate rotation if provided (0-360)
+        if (rotation !== undefined && rotation !== null && rotation !== '') {
+            rot = parseFloat(rotation);
+            if (isNaN(rot) || rot < 0 || rot > 360) {
+                return NextResponse.json({ success: false, error: 'Invalid rotation. Must be between 0 and 360', code: 'INVALID_ROTATION' }, { status: 400 });
             }
         }
 
@@ -361,6 +387,8 @@ export async function POST(
                 thumbnail_url: thumbnailUrl,
                 latitude: lat,
                 longitude: lng,
+                height: h,
+                rotation: rot,
                 uploaded_by: userId,
                 created_at: new Date().toISOString()
             })
@@ -372,6 +400,8 @@ export async function POST(
                 thumbnail_url,
                 latitude,
                 longitude,
+                height,
+                rotation,
                 created_at
             `)
             .single();
@@ -421,7 +451,9 @@ export async function POST(
                     thumbnailSignedUrl: thumbnailSignedUrl || null,
                     location: fileRecord.latitude && fileRecord.longitude ? {
                         latitude: fileRecord.latitude,
-                        longitude: fileRecord.longitude
+                        longitude: fileRecord.longitude,
+                        height: fileRecord.height ?? null,
+                        rotation: fileRecord.rotation ?? null
                     } : null,
                     uploadedAt: fileRecord.created_at
                 }
@@ -522,7 +554,7 @@ export async function PUT(
         // Get current file to verify it exists and belongs to the project
         const { data: currentFile, error: fileError } = await supabaseAdmin
             .from('files')
-            .select('id, file_name, uploaded_by, latitude, longitude')
+            .select('id, file_name, uploaded_by, latitude, longitude, height, rotation')
             .eq('id', fileId)
             .eq('project_id', projectId)
             .single();
@@ -550,11 +582,13 @@ export async function PUT(
         const updateFields: {
             latitude?: number | null;
             longitude?: number | null;
+            height?: number | null;
+            rotation?: number | null;
             file_name?: string;
         } = {};
 
         // Validate and update coordinates if provided
-        if (latitude !== undefined || longitude !== undefined) {
+        if (latitude !== undefined || longitude !== undefined || body.height !== undefined || body.rotation !== undefined) {
             if (latitude !== undefined) {
                 const lat = parseFloat(latitude);
                 if (isNaN(lat) || lat < -90 || lat > 90) {
@@ -577,6 +611,32 @@ export async function PUT(
                     }, { status: 400 });
                 }
                 updateFields.longitude = lng;
+            }
+
+            // Height may be null to clear the value
+            if (body.height !== undefined) {
+                if (body.height === null) {
+                    updateFields.height = null;
+                } else {
+                    const hh = parseFloat(body.height);
+                    if (isNaN(hh)) {
+                        return NextResponse.json({ success: false, error: 'Invalid height', code: 'INVALID_HEIGHT' }, { status: 400 });
+                    }
+                    updateFields.height = hh;
+                }
+            }
+
+            // Rotation may be null to clear the value
+            if (body.rotation !== undefined) {
+                if (body.rotation === null) {
+                    updateFields.rotation = null;
+                } else {
+                    const rr = parseFloat(body.rotation);
+                    if (isNaN(rr) || rr < 0 || rr > 360) {
+                        return NextResponse.json({ success: false, error: 'Invalid rotation. Must be between 0 and 360', code: 'INVALID_ROTATION' }, { status: 400 });
+                    }
+                    updateFields.rotation = rr;
+                }
             }
         }
 
@@ -605,8 +665,11 @@ export async function PUT(
                 file_name,
                 file_size,
                 file_url,
+                thumbnail_url,
                 latitude,
                 longitude,
+                height,
+                rotation,
                 created_at,
                 uploaded_by
             `)
@@ -638,7 +701,9 @@ export async function PUT(
                     signedUrl: signedUrlData?.signedUrl || null,
                     location: updatedFile.latitude && updatedFile.longitude ? {
                         latitude: updatedFile.latitude,
-                        longitude: updatedFile.longitude
+                        longitude: updatedFile.longitude,
+                        height: updatedFile.height ?? null,
+                        rotation: updatedFile.rotation ?? null
                     } : null,
                     uploadedAt: updatedFile.created_at,
                     uploadedBy: updatedFile.uploaded_by

@@ -78,6 +78,11 @@ export async function GET(
                 file_name,
                 file_url,
                 file_size,
+                thumbnail_url,
+                latitude,
+                longitude,
+                height,
+                rotation,
                 project_id
             `)
             .eq('id', fileId)
@@ -117,7 +122,14 @@ export async function GET(
                     size: file.file_size,
                     downloadUrl: signedUrlData.signedUrl,
                     expiresIn: 3600, // seconds
-                    expiresAt: new Date(Date.now() + 3600 * 1000).toISOString()
+                    expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
+                    location: file.latitude && file.longitude ? {
+                        latitude: file.latitude,
+                        longitude: file.longitude,
+                        height: file.height ?? null,
+                        rotation: file.rotation ?? null
+                    } : null,
+                    thumbnailUrl: file.thumbnail_url || null
                 }
             }
         });

@@ -53,6 +53,8 @@ interface ProjectFile {
     uploaded_by_profile: {
         email: string;
     };
+    height?: number | null;
+    rotation?: number | null;
 }
 
 export default function UserProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -136,6 +138,8 @@ export default function UserProjectDetailPage({ params }: { params: Promise<{ id
                     id,
                     file_name,
                     file_size,
+                    height,
+                    rotation,
                     file_url,
                     created_at,
                     uploaded_by
@@ -177,6 +181,8 @@ export default function UserProjectDetailPage({ params }: { params: Promise<{ id
                     uploaded_by_profile: {
                         email: uploaderProfiles[file.uploaded_by] || 'Unknown'
                     }
+                    ,height: file.height ?? null,
+                    rotation: file.rotation ?? null
                 }));
                 setFiles(transformedFiles);
             }
@@ -418,6 +424,8 @@ export default function UserProjectDetailPage({ params }: { params: Promise<{ id
                                             <TableRow>
                                                 <TableHead>File Name</TableHead>
                                                 <TableHead>Size</TableHead>
+                                                <TableHead>Height</TableHead>
+                                                <TableHead>Rotation</TableHead>
                                                 <TableHead>Uploaded By</TableHead>
                                                 <TableHead>Uploaded Date</TableHead>
                                             </TableRow>
@@ -432,6 +440,8 @@ export default function UserProjectDetailPage({ params }: { params: Promise<{ id
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>{formatFileSize(file.size)}</TableCell>
+                                                    <TableCell>{file.height !== undefined && file.height !== null ? `${Number(file.height).toFixed(4)} m` : '—'}</TableCell>
+                                                    <TableCell>{file.rotation !== undefined && file.rotation !== null ? `${Number(file.rotation).toFixed(2)}°` : '—'}</TableCell>
                                                     <TableCell>{file.uploaded_by_profile.email}</TableCell>
                                                     <TableCell>{formatDate(file.uploaded_at)}</TableCell>
                                                 </TableRow>

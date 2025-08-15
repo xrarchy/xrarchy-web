@@ -30,6 +30,8 @@ interface ProjectFile {
     thumbnail_url?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    height?: number | null;
+    rotation?: number | null;
     created_at: string;
     uploaded_by: {
         id: string;
@@ -55,6 +57,8 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
     const [description, setDescription] = useState('');
     const [latitude, setLatitude] = useState('');
     const [longitude, setLongitude] = useState('');
+    const [height, setHeight] = useState('');
+    const [rotation, setRotation] = useState('');
     const [gettingLocation, setGettingLocation] = useState(false);
     const [projectId, setProjectId] = useState<string>('');
 
@@ -227,6 +231,12 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
             if (latitude && longitude) {
                 formData.append('latitude', latitude);
                 formData.append('longitude', longitude);
+            }
+            if (height) {
+                formData.append('height', height);
+            }
+            if (rotation) {
+                formData.append('rotation', rotation);
             }
 
             const response = await fetch(`/api/projects/${projectId}/files`, {
@@ -522,6 +532,39 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     </p>
                                 )}
                             </div>
+
+                                {/* Height & Rotation Inputs */}
+                                <div className="space-y-3 p-4 bg-gray-50 rounded-lg">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <Label htmlFor="height" className="text-xs">Height (m)</Label>
+                                            <Input
+                                                id="height"
+                                                type="number"
+                                                step="0.0001"
+                                                min="0"
+                                                value={height}
+                                                onChange={(e) => setHeight(e.target.value)}
+                                                placeholder="e.g. 1.5000"
+                                                className="text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label htmlFor="rotation" className="text-xs">Rotation (°)</Label>
+                                            <Input
+                                                id="rotation"
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                max="360"
+                                                value={rotation}
+                                                onChange={(e) => setRotation(e.target.value)}
+                                                placeholder="e.g. 180"
+                                                className="text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             <div className="flex space-x-2">
                                 <Button type="submit" disabled={uploading || !selectedFile}>
                                     {uploading ? 'Uploading...' : 'Upload File'}
@@ -533,6 +576,8 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                     setDescription('');
                                     setLatitude('');
                                     setLongitude('');
+                                    setHeight('');
+                                    setRotation('');
                                 }}>
                                     Cancel
                                 </Button>
@@ -560,6 +605,8 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                             <TableHead>Thumbnail</TableHead>
                                             <TableHead>Filename</TableHead>
                                             <TableHead>Size</TableHead>
+                                            <TableHead>Height</TableHead>
+                                            <TableHead>Rotation</TableHead>
                                             <TableHead>Location</TableHead>
                                             <TableHead>Uploaded By</TableHead>
                                             <TableHead>Uploaded</TableHead>
@@ -587,6 +634,12 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                                 </TableCell>
                                                 <TableCell className="text-sm">
                                                     {formatFileSize(file.file_size)}
+                                                </TableCell>
+                                                <TableCell className="text-sm">
+                                                    {file.height !== null && file.height !== undefined ? `${Number(file.height).toFixed(4)} m` : <span className="text-muted-foreground text-xs">—</span>}
+                                                </TableCell>
+                                                <TableCell className="text-sm">
+                                                    {file.rotation !== null && file.rotation !== undefined ? `${Number(file.rotation).toFixed(2)}°` : <span className="text-muted-foreground text-xs">—</span>}
                                                 </TableCell>
                                                 <TableCell className="text-sm">
                                                     {file.latitude && file.longitude ? (
@@ -668,8 +721,16 @@ export default function AdminProjectFiles({ params }: { params: Promise<{ id: st
                                                         <div className="text-sm">{formatFileSize(file.file_size)}</div>
                                                     </div>
                                                     <div>
+                                                        <span className="text-sm text-muted-foreground">Height:</span>
+                                                        <div className="text-sm">{file.height !== null && file.height !== undefined ? `${Number(file.height).toFixed(4)} m` : <span className="text-muted-foreground">—</span>}</div>
+                                                    </div>
+                                                    <div>
                                                         <span className="text-sm text-muted-foreground">Uploaded:</span>
                                                         <div className="text-sm">{formatDate(file.created_at)}</div>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm text-muted-foreground">Rotation:</span>
+                                                        <div className="text-sm">{file.rotation !== null && file.rotation !== undefined ? `${Number(file.rotation).toFixed(2)}°` : <span className="text-muted-foreground">—</span>}</div>
                                                     </div>
                                                 </div>
 

@@ -24,7 +24,11 @@ async function checkTableStructure() {
         const testData = {
             filename: 'test.txt',
             file_url: 'test-url',
-            uploaded_by: 'test-user'
+            uploaded_by: 'test-user',
+            latitude: null,
+            longitude: null,
+            height: null,
+            rotation: null
         };
 
         const { data, error } = await supabase
@@ -44,7 +48,7 @@ async function checkTableStructure() {
             await supabase
                 .from('files')
                 .delete()
-                .eq('filename', 'test.txt');
+                .eq('file_url', 'test-url');
         }
 
     } catch (error) {
