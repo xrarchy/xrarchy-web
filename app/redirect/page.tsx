@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
-export default function RedirectPage() {
+function RedirectContent() {
     const searchParams = useSearchParams();
     const link = searchParams.get("link");
 
@@ -15,4 +15,12 @@ export default function RedirectPage() {
     }, [link]);
 
     return <p>{link ? `Redirecting to ${link}...` : "No link provided."}</p>;
+}
+
+export default function RedirectPage() {
+    return (
+        <Suspense fallback={<p>Loading...</p>}>
+            <RedirectContent />
+        </Suspense>
+    );
 }
